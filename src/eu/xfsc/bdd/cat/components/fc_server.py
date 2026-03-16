@@ -19,8 +19,7 @@ class Server(BaseServiceKeycloak):
     """
     host: pydantic.HttpUrl = pydantic.HttpUrl(FC_HOST or "http://localhost:8081")
 
-    # Endpoint path constant — will change to "assets" later (CAT-NFR-01)
-    SD_PATH: str = "self-descriptions"
+    ASSET_PATH: str = "assets"
 
     @property
     def health_url(self) -> str:
@@ -36,13 +35,13 @@ class Server(BaseServiceKeycloak):
         except requests.exceptions.ConnectionError:
             return False
 
-    # -- Self-Descriptions --
+    # -- Assets (credentials + non-RDF) --
 
-    def add_self_description(self, payload: str) -> requests.Response:
-        """POST /self-descriptions (application/json body)"""
+    def add_asset(self, payload: str) -> requests.Response:
+        """POST /assets (application/json body)"""
         self._update_header(content_type="application/json")
         return self.http.post(
-            url=f"{self.host}{self.SD_PATH}",
+            url=f"{self.host}{self.ASSET_PATH}",
             data=payload.encode("utf-8"),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
@@ -50,55 +49,55 @@ class Server(BaseServiceKeycloak):
     def add_asset_multipart(
         self, file_content: bytes, content_type: str, filename: str,
     ) -> requests.Response:
-        """POST /self-descriptions (multipart/form-data)"""
+        """POST /assets (multipart/form-data)"""
         self._update_header()
         # Do not set Content-Type header — let requests set the multipart boundary
         self.http.headers.pop("Content-Type", None)
         return self.http.post(
-            url=f"{self.host}{self.SD_PATH}",
+            url=f"{self.host}{self.ASSET_PATH}",
             files={"file": (filename, file_content, content_type)},
             timeout=CONNECT_TIMEOUT_IN_SECONDS,
         )
 
     def add_asset_raw(self, file_content: bytes, content_type: str) -> requests.Response:
-        """POST /self-descriptions (raw binary with specified content-type)"""
+        """POST /assets (raw binary with specified content-type)"""
         self._update_header(content_type=content_type)
         return self.http.post(
-            url=f"{self.host}{self.SD_PATH}",
+            url=f"{self.host}{self.ASSET_PATH}",
             data=file_content,
             timeout=CONNECT_TIMEOUT_IN_SECONDS,
         )
 
-    def get_self_descriptions(self, params: Optional[dict[str, Any]] = None) -> requests.Response:
-        """GET /self-descriptions"""
+    def get_assets(self, params: Optional[dict[str, Any]] = None) -> requests.Response:
+        """GET /assets"""
         self._update_header()
         return self.http.get(
-            url=f"{self.host}{self.SD_PATH}",
+            url=f"{self.host}{self.ASSET_PATH}",
             params=params,
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def get_self_description(self, sd_hash: str) -> requests.Response:
-        """GET /self-descriptions/{hash}"""
+    def get_asset(self, asset_hash: str) -> requests.Response:
+        """GET /assets/{hash}"""
         self._update_header()
         return self.http.get(
-            url=f"{self.host}{self.SD_PATH}/{sd_hash}",
+            url=f"{self.host}{self.ASSET_PATH}/{asset_hash}",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def delete_self_description(self, sd_hash: str) -> requests.Response:
-        """DELETE /self-descriptions/{hash}"""
+    def delete_asset(self, asset_hash: str) -> requests.Response:
+        """DELETE /assets/{hash}"""
         self._update_header()
         return self.http.delete(
-            url=f"{self.host}{self.SD_PATH}/{sd_hash}",
+            url=f"{self.host}{self.ASSET_PATH}/{asset_hash}",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def revoke_self_description(self, sd_hash: str) -> requests.Response:
-        """POST /self-descriptions/{hash}/revoke"""
+    def revoke_asset(self, asset_hash: str) -> requests.Response:
+        """POST /assets/{hash}/revoke"""
         self._update_header()
         return self.http.post(
-            url=f"{self.host}{self.SD_PATH}/{sd_hash}/revoke",
+            url=f"{self.host}{self.ASSET_PATH}/{asset_hash}/revoke",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 

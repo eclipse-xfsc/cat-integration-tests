@@ -24,7 +24,7 @@ This means the **same signed fixtures** work across local, CI, and QA environmen
 
 ### Production alignment
 
-Real Gaia-X participants register Self-Descriptions using `did:web` with their organisation's domain. Using `did:web` in tests exercises the same DID resolution and verification code paths.
+Real Gaia-X participants register credentials using `did:web` with their organisation's domain. Using `did:web` in tests exercises the same DID resolution and verification code paths.
 
 ### Infrastructure is needed regardless
 

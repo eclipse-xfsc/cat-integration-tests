@@ -1,7 +1,7 @@
-@domain.sd @baseline
-Feature: Self-Description Lifecycle
+@domain.asset @baseline
+Feature: Asset Lifecycle
   As a Federated Catalogue API consumer
-  I want to manage Self-Descriptions
+  I want to manage Assets
   So that I can create, read, and revoke them
 
   Background:
@@ -10,8 +10,8 @@ Feature: Self-Description Lifecycle
       And Federated Catalogue Server is up
 
   @smoke
-  Scenario: List Self-Descriptions
-    When request list of self-descriptions
+  Scenario: List Assets
+    When request list of assets
     Then get http 200:Success code
 
   # NOTE: 500 here means the FC server cannot authenticate to Keycloak's admin API.
