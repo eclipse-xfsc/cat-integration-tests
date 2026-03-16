@@ -24,60 +24,60 @@ def check_fc_server_up(context: ContextType) -> None:
     assert context.fc_server.is_up(), f"FC Server is not up at {context.fc_server.host}"
 
 
-# -- Self-Descriptions --
+# -- Assets (credentials) --
 
-@given('self-description from fixture "{fixture_path}" is not uploaded')
-def ensure_sd_not_uploaded(context: ContextType, fixture_path: str) -> None:
+@given('credential from fixture "{fixture_path}" is not uploaded')
+def ensure_credential_not_uploaded(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
-    sd_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    resp = context.fc_server.delete_self_description(sd_hash)
+    asset_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    resp = context.fc_server.delete_asset(asset_hash)
     assert resp.status_code in (200, 404), \
         f"Unexpected cleanup response: {resp.status_code}, {resp.content}"
 
 
-@when("request list of self-descriptions")
-def request_list_self_descriptions(context: ContextType) -> None:
-    context.requests_response = context.fc_server.get_self_descriptions()
+@when("request list of assets")
+def request_list_assets(context: ContextType) -> None:
+    context.requests_response = context.fc_server.get_assets()
 
 
-@when('add self-description')
-def add_self_description(context: ContextType) -> None:
-    assert context.text, "Step requires docstring with SD payload"
-    context.requests_response = context.fc_server.add_self_description(context.text)
+@when('add credential')
+def add_credential(context: ContextType) -> None:
+    assert context.text, "Step requires docstring with credential payload"
+    context.requests_response = context.fc_server.add_asset(context.text)
 
 
-@when('add self-description from fixture "{fixture_path}"')
-def add_self_description_from_fixture(context: ContextType, fixture_path: str) -> None:
+@when('add credential from fixture "{fixture_path}"')
+def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
-    context.requests_response = context.fc_server.add_self_description(payload)
+    context.requests_response = context.fc_server.add_asset(payload)
 
 
-@when('delete self-description "{sd_hash}"')
-def delete_self_description(context: ContextType, sd_hash: str) -> None:
-    context.requests_response = context.fc_server.delete_self_description(sd_hash)
+@when('delete asset "{asset_hash}"')
+def delete_asset(context: ContextType, asset_hash: str) -> None:
+    context.requests_response = context.fc_server.delete_asset(asset_hash)
 
 
-@when('revoke self-description "{sd_hash}"')
-def revoke_self_description(context: ContextType, sd_hash: str) -> None:
-    context.requests_response = context.fc_server.revoke_self_description(sd_hash)
+@when('revoke asset "{asset_hash}"')
+def revoke_asset(context: ContextType, asset_hash: str) -> None:
+    context.requests_response = context.fc_server.revoke_asset(asset_hash)
 
 
 # -- Verification --
 
-@when("verify self-description")
-def verify_self_description(context: ContextType) -> None:
-    assert context.text, "Step requires docstring with SD payload"
+@when("verify credential")
+def verify_credential(context: ContextType) -> None:
+    assert context.text, "Step requires docstring with credential payload"
     context.requests_response = context.fc_server.verify(context.text)
 
 
-@when('verify self-description from fixture "{fixture_path}"')
-def verify_self_description_from_fixture(context: ContextType, fixture_path: str) -> None:
+@when('verify credential from fixture "{fixture_path}"')
+def verify_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
     context.requests_response = context.fc_server.verify(payload)
 
 
-@when('verify self-description from fixture "{fixture_path}" skipping signatures')
-def verify_sd_from_fixture_skip_sigs(context: ContextType, fixture_path: str) -> None:
+@when('verify credential from fixture "{fixture_path}" skipping signatures')
+def verify_credential_from_fixture_skip_sigs(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
     context.requests_response = context.fc_server.verify(payload, params={
         "verifyVPSignature": "false",
@@ -169,8 +169,8 @@ def cleanup_uploaded_schemas(context: ContextType) -> None:
 @given('asset from fixture "{fixture_path}" is not uploaded')
 def ensure_asset_not_uploaded(context: ContextType, fixture_path: str) -> None:
     file_content = (FIXTURES_DIR / fixture_path).read_bytes()
-    sd_hash = hashlib.sha256(file_content).hexdigest()
-    resp = context.fc_server.delete_self_description(sd_hash)
+    asset_hash = hashlib.sha256(file_content).hexdigest()
+    resp = context.fc_server.delete_asset(asset_hash)
     assert resp.status_code in (200, 404), \
         f"Unexpected cleanup response: {resp.status_code}, {resp.content}"
 

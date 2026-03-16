@@ -63,7 +63,7 @@ If required actions remain, the password grant will fail with: `invalid_grant: A
 |------|-------------|
 | `Ro-MU-CA` | Catalogue Admin (full access) |
 | `Ro-MU-A` | User management |
-| `Ro-SD-A` | Self-Description management (create, delete, revoke) |
+| `Ro-AS-A` | Asset management (create, delete, revoke) |
 | `Ro-PA-A` | Participant management |
 
 For running all tests, assign **Ro-MU-CA** (includes all permissions).
@@ -138,7 +138,7 @@ Tests use a dot-separated hierarchical tagging scheme (see [ADR-001](docs/adr/00
 |--------|-----------|---------|
 | `@req.` | SRS requirement | `@req.CAT-FR-CO-01` |
 | `@gate.` | FACIS I&A acceptance gate | `@gate.GD1`, `@gate.CO1` |
-| `@domain.` | API area under test | `@domain.sd`, `@domain.verify` |
+| `@domain.` | API area under test | `@domain.asset`, `@domain.verify` |
 | `@cfg.` | Required deployment config | `@cfg.neo4j`, `@cfg.gaiax` |
 | _(bare)_ | Test purpose | `@smoke`, `@baseline`, `@regression` |
 | _(bare)_ | Dev utility | `@wip`, `@skip`, `@this` |
@@ -195,7 +195,7 @@ Scenarios without `@cfg.*` tags are config-agnostic and run in every variant.
 
 ## Signed Test Fixtures
 
-The FC server verifies LD-Signatures on uploaded Self-Descriptions by resolving the DID in the proof's `verificationMethod` field and checking the cryptographic signature against the public key.
+The FC server verifies LD-Signatures on uploaded credentials by resolving the DID in the proof's `verificationMethod` field and checking the cryptographic signature against the public key.
 
 Test fixtures use **`did:web`** — the same DID method that real Gaia-X participants use. The DID resolves to a DID document hosted by the docker-compose `did-server` service, which also serves the X.509 certificate chain and mocks the trust anchor registry. See [ADR-002](docs/adr/002-did-web-over-did-jwk.md) for the rationale behind this choice.
 
@@ -238,8 +238,8 @@ fixtures/
     hasInvalidSignature.jsonld                         # Corrupted JWS
     hasNoSignature1.jsonld                             # Missing proof
     participant_without_proofs.json                    # No proof objects at all
-    sd-without-credential-subject.json                 # Missing credentialSubject
-    sd-without-issuer.json                             # Missing issuer
+    credential-without-credential-subject.json           # Missing credentialSubject
+    credential-without-issuer.json                     # Missing issuer
 ```
 
 ### Key material
@@ -318,7 +318,7 @@ Because `did:web` provides indirection, the signed fixtures do **not** need to b
 
 - **`alg` field required in JWK** — `LocalSignatureVerifier` reads the algorithm from `jwk.getAlg()`. If the DID document's JWK omits `"alg": "PS256"`, verification fails with `"VerifiableCredential does not match with proof"`. Unlike `UniSignatureVerifier`, `LocalSignatureVerifier` does not fall back to the JWS header algorithm.
 - **Weak RSA keys rejected after uni-resolver-client upgrade** — Bouncy Castle (pulled in transitively by the upgrade) rejects the bundled `rsa2048.sign.pem` with `"RSA modulus has a small prime factor"`. This surfaces misleadingly as a signature mismatch in the HTTP response — the real error is only in server logs. Fix: generate a new key with `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048`.
-- **`sdfiles.validators` column width** — The default varchar(256) column in PostgreSQL may truncate long DIDs. With `did:web` this is not an issue, but if `did:jwk` is used for debugging, its ~800-char URIs require a database migration to `varchar(2048)[]`.
+- **`assets.validators` column width** — The default varchar(256) column in PostgreSQL may truncate long DIDs. With `did:web` this is not an issue, but if `did:jwk` is used for debugging, its ~800-char URIs require a database migration to `varchar(2048)[]`.
 - **Only `JsonWebSignature2020` is supported** — Old fixtures using `Ed25519Signature2018` fail with `"Ed25519Signature2018 not supported"`. All fixtures must use PS256/RSA with JWS 2020.
 - **Python `requests.post(data=string)` sends wrong encoding** — Passing a JSON-LD string directly as `data=` adds charset headers that confuse the FC server's Jackson parser (returns 400: `"Unexpected end-of-input"`). Fix: always use `data=payload.encode("utf-8")`. Already applied in `src/eu/xfsc/bdd/cat/components/fc_server.py`.
 

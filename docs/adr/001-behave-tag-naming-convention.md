@@ -57,7 +57,7 @@ Format: `@domain.{api-area}`
 
 | Tag | API area | Endpoints |
 |-----|----------|-----------|
-| `@domain.sd` | Self-Descriptions | `/self-descriptions/*` |
+| `@domain.asset` | Assets | `/assets/*` |
 | `@domain.verify` | Verification | `/verification` |
 | `@domain.query` | Query | `/query/*` |
 | `@domain.schema` | Schemas | `/schemas/*` |
@@ -128,23 +128,23 @@ Purpose tags answer: *"What role does this test play in the overall suite?"*
 
 ```gherkin
 @domain.verify @baseline
-Feature: Self-Description Verification
+Feature: Credential Verification
   As a Federated Catalogue API consumer
-  I want to verify a Self-Description
+  I want to verify a Credential
   So that I can check its validity before submitting it
 
   @smoke @cfg.test-sig
-  Scenario: Verify SD with unrecognised type returns semantic error
+  Scenario: Verify credential with unrecognised type returns semantic error
 
   @smoke @req.CAT-FR-CO-01 @cfg.default @cfg.test-sig
-  Scenario: Verify SD with correct ontology type passes semantic check
+  Scenario: Verify credential with correct ontology type passes semantic check
 
   @smoke
-  Scenario: Verify an invalid Self-Description returns error
+  Scenario: Verify an invalid credential returns error
 
 
   @req.CAT-FR-SF-04 @cfg.strict @cfg.test-sig
-  Scenario: Verify SD with forced schema validation enabled
+  Scenario: Verify credential with forced schema validation enabled
 
 ```
 

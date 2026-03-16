@@ -3,7 +3,7 @@ CAT-specific Keycloak server — uses password grant instead of client_credentia
 
 The upstream bdd-executor KeycloakServer hardcodes client_credentials grant,
 which doesn't work for the Federated Catalogue where we need a user with
-specific roles (e.g. Ro-SD-A).
+specific roles (e.g. Ro-AS-A).
 """
 from typing import cast
 
