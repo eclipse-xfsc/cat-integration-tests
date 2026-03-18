@@ -125,6 +125,10 @@ def query_result_contains(context: ContextType, expected_value: str) -> None:
 
 # -- Schemas --
 
+import json
+import urllib.parse
+import xml.etree.ElementTree as ET
+
 CONTENT_TYPE_MAP = {
     ".ttl": "text/turtle",
     ".jsonld": "application/ld+json",
@@ -133,35 +137,164 @@ CONTENT_TYPE_MAP = {
 }
 
 
+def _extract_schema_id_from_response(resp: requests.Response) -> str | None:
+    """Extract schema ID from a 201 response JSON body."""
+    try:
+        return resp.json().get("id")
+    except Exception:
+        return None
+
+
+def _extract_schema_id_from_fixture(path: Path) -> str | None:
+    """Extract schema ID from fixture file content (same logic the server uses)."""
+    try:
+        content = path.read_text()
+        if path.suffix == ".json":
+            return json.loads(content).get("$id")
+        if path.suffix == ".xsd":
+            root = ET.fromstring(content)
+            return root.get("targetNamespace")
+    except Exception:
+        pass
+    return None
+
+
+def _url_encode_schema_id(schema_id: str) -> str:
+    return urllib.parse.quote(schema_id, safe="")
+
+
+def _track_schema_id(context: ContextType, schema_id: str | None) -> None:
+    if not schema_id:
+        return
+    try:
+        context._uploaded_schema_ids.append(schema_id)
+    except (AttributeError, KeyError):
+        context._uploaded_schema_ids = [schema_id]
+
+
 @given('schema from fixture "{fixture_path}" is uploaded')
 def upload_schema_from_fixture(context: ContextType, fixture_path: str) -> None:
     path = FIXTURES_DIR / fixture_path
     payload = path.read_text()
     content_type = CONTENT_TYPE_MAP.get(path.suffix, "application/json")
+    schema_id = _extract_schema_id_from_fixture(path)
+
     resp = context.fc_server.add_schema(payload, content_type=content_type)
-    assert resp.status_code in (200, 201, 409), \
+    if resp.status_code == 409 and schema_id:
+        encoded = _url_encode_schema_id(schema_id)
+        context.fc_server.delete_schema(encoded)
+        resp = context.fc_server.add_schema(payload, content_type=content_type)
+
+    assert resp.status_code in (200, 201), \
         f"Schema upload failed: {resp.status_code}, {resp.content}"
-    # Track uploaded schema ID for cleanup
-    if resp.status_code == 201 and "location" in resp.headers:
-        schema_id = resp.headers["location"].rstrip("/").rsplit("/", 1)[-1]
-        try:
-            context._uploaded_schema_ids.append(schema_id)
-        except KeyError:
-            context._uploaded_schema_ids = [schema_id]
+    _track_schema_id(context, _extract_schema_id_from_response(resp) or schema_id)
+
+
+@given('schema from fixture "{fixture_path}" is uploaded as "{content_type}"')
+def upload_schema_from_fixture_with_ct(context: ContextType, fixture_path: str, content_type: str) -> None:
+    path = FIXTURES_DIR / fixture_path
+    payload = path.read_text()
+    schema_id = _extract_schema_id_from_fixture(path)
+
+    resp = context.fc_server.add_schema(payload, content_type=content_type)
+    if resp.status_code == 409 and schema_id:
+        # Already exists — delete and re-upload for a clean response
+        encoded = _url_encode_schema_id(schema_id)
+        context.fc_server.delete_schema(encoded)
+        resp = context.fc_server.add_schema(payload, content_type=content_type)
+
+    assert resp.status_code in (200, 201), \
+        f"Schema upload failed: {resp.status_code}, {resp.content}"
+    context.requests_response = resp
+    _track_schema_id(context, _extract_schema_id_from_response(resp) or schema_id)
+
+
+@given('schema "{fixture_path}" is cleaned up')
+def cleanup_schema_by_fixture(context: ContextType, fixture_path: str) -> None:
+    """Delete schema by ID extracted from fixture content."""
+    path = FIXTURES_DIR / fixture_path
+    schema_id = _extract_schema_id_from_fixture(path)
+    if schema_id:
+        encoded = _url_encode_schema_id(schema_id)
+        resp = context.fc_server.delete_schema(encoded)
+        assert resp.status_code in (200, 204, 404), \
+            f"Schema cleanup failed: {resp.status_code}, {resp.content}"
 
 
 @given('uploaded schemas are cleaned up')
 @then('uploaded schemas are cleaned up')
 def cleanup_uploaded_schemas(context: ContextType) -> None:
-    try:
-        schema_ids = context._uploaded_schema_ids
-    except KeyError:
-        schema_ids = []
+    schema_ids = getattr(context, "_uploaded_schema_ids", [])
     for schema_id in schema_ids:
-        resp = context.fc_server.delete_schema(schema_id)
+        encoded = _url_encode_schema_id(schema_id)
+        resp = context.fc_server.delete_schema(encoded)
         assert resp.status_code in (200, 204, 404), \
             f"Schema cleanup failed for {schema_id}: {resp.status_code}, {resp.content}"
     context._uploaded_schema_ids = []
+
+
+@when('upload schema from fixture "{fixture_path}" with content-type "{content_type}"')
+def upload_schema_with_content_type(context: ContextType, fixture_path: str, content_type: str) -> None:
+    path = FIXTURES_DIR / fixture_path
+    payload = path.read_text()
+    resp = context.fc_server.add_schema(payload, content_type=content_type)
+    context.requests_response = resp
+    if resp.status_code == 201:
+        _track_schema_id(context, _extract_schema_id_from_response(resp))
+
+
+@when("get schema by response id")
+def get_schema_by_response_id(context: ContextType) -> None:
+    schema_id = _extract_schema_id_from_response(context.requests_response)
+    assert schema_id, f"No schema ID in response: {context.requests_response.text[:200]}"
+    encoded = _url_encode_schema_id(schema_id)
+    context.requests_response = context.fc_server.get_schema(encoded)
+
+
+@when("delete schema by response id")
+def delete_schema_by_response_id(context: ContextType) -> None:
+    schema_id = _extract_schema_id_from_response(context.requests_response)
+    assert schema_id, f"No schema ID in response: {context.requests_response.text[:200]}"
+    encoded = _url_encode_schema_id(schema_id)
+    context.requests_response = context.fc_server.delete_schema(encoded)
+
+
+@then("response has a schema id")
+def response_has_schema_id(context: ContextType) -> None:
+    body = context.requests_response.json()
+    schema_id = body.get("id")
+    assert schema_id, f"Expected non-empty schema id, got: {body}"
+
+
+@then('response schema id is "{expected_id}"')
+def response_schema_id_is(context: ContextType, expected_id: str) -> None:
+    body = context.requests_response.json()
+    actual = body.get("id")
+    assert actual == expected_id, \
+        f"Expected schema id '{expected_id}', got '{actual}'"
+
+
+@then('response body contains "{text}"')
+def response_body_contains(context: ContextType, text: str) -> None:
+    body = context.requests_response.text
+    assert text in body, \
+        f"Expected '{text}' in response body, got: {body[:300]}"
+
+
+@then('schema listing jsonSchemas contains "{expected_id}"')
+def schema_listing_json_schemas_contains(context: ContextType, expected_id: str) -> None:
+    body = context.requests_response.json()
+    schemas = body.get("jsonSchemas", [])
+    assert expected_id in schemas, \
+        f"Expected '{expected_id}' in jsonSchemas, got: {schemas}"
+
+
+@then('schema listing xmlSchemas contains "{expected_id}"')
+def schema_listing_xml_schemas_contains(context: ContextType, expected_id: str) -> None:
+    body = context.requests_response.json()
+    schemas = body.get("xmlSchemas", [])
+    assert expected_id in schemas, \
+        f"Expected '{expected_id}' in xmlSchemas, got: {schemas}"
 
 
 # -- Assets (non-RDF uploads) --
