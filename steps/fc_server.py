@@ -52,6 +52,20 @@ def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None
     context.requests_response = context.fc_server.add_asset(payload)
 
 
+@when('get asset by id "{asset_id}"')
+def get_asset_by_id(context: ContextType, asset_id: str) -> None:
+    context.requests_response = context.fc_server.get_asset(asset_id)
+
+
+@when('get asset by id from last response')
+def get_asset_by_id_from_response(context: ContextType) -> None:
+    """Extract asset ID from the last upload response and retrieve by IRI."""
+    response_json = context.requests_response.json()
+    asset_id = response_json.get("id")
+    assert asset_id, f"Last response does not contain an 'id' field: {response_json}"
+    context.requests_response = context.fc_server.get_asset(asset_id)
+
+
 @when('delete asset "{asset_hash}"')
 def delete_asset(context: ContextType, asset_hash: str) -> None:
     context.requests_response = context.fc_server.delete_asset(asset_hash)

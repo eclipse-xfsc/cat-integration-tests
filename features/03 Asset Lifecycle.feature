@@ -27,3 +27,24 @@ Feature: Asset Lifecycle
   Scenario: List Schemas
     When request list of schemas
     Then get http 200:Success code
+
+  # --- CAT-FR-AM-02: IRI-based asset retrieval ---
+
+  @req.CAT-FR-AM-02 @cfg.default
+  Scenario: Retrieve RDF asset by IRI
+    # Upload a credential, extract the IRI from the 201 response, retrieve via GET /assets/{id}.
+    Given credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+    When get asset by id from last response
+    Then get http 200:Success code
+
+  @req.CAT-FR-AM-02 @cfg.default
+  Scenario: Retrieve non-RDF asset by IRI returns 400
+    # Non-RDF assets (PDF, binary) cannot be retrieved via GET /assets/{id} — raw content
+    # download requires a dedicated endpoint (future story CAT-FR-SF-03).
+    Given asset from fixture "valid/non-rdf/sample.pdf" is not uploaded
+    When add asset from fixture "valid/non-rdf/sample.pdf" with content-type "application/pdf"
+    Then get http 201:Created code
+    When get asset by id from last response
+    Then get http 400:Bad Request

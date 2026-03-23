@@ -2,6 +2,7 @@
 Federated Catalogue Server BDD Wrapper
 """
 from typing import Any, Optional
+from urllib.parse import quote
 
 import pydantic
 import requests
@@ -77,16 +78,16 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def get_asset(self, asset_hash: str) -> requests.Response:
-        """GET /assets/{hash}"""
+    def get_asset(self, asset_id: str) -> requests.Response:
+        """GET /assets/{id}"""
         self._update_header()
         return self.http.get(
-            url=f"{self.host}{self.ASSET_PATH}/{asset_hash}",
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
     def delete_asset(self, asset_hash: str) -> requests.Response:
-        """DELETE /assets/{hash}"""
+        """DELETE /assets/{asset_hash}"""
         self._update_header()
         return self.http.delete(
             url=f"{self.host}{self.ASSET_PATH}/{asset_hash}",
@@ -94,7 +95,7 @@ class Server(BaseServiceKeycloak):
         )
 
     def revoke_asset(self, asset_hash: str) -> requests.Response:
-        """POST /assets/{hash}/revoke"""
+        """POST /assets/{asset_hash}/revoke"""
         self._update_header()
         return self.http.post(
             url=f"{self.host}{self.ASSET_PATH}/{asset_hash}/revoke",
