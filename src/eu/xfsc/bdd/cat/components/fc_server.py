@@ -146,6 +146,14 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def get_schema(self, schema_id: str) -> requests.Response:
+        """GET /schemas/{schemaId}"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}schemas/{schema_id}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     def delete_schema(self, schema_id: str) -> requests.Response:
         """DELETE /schemas/{schemaId}"""
         self._update_header()
