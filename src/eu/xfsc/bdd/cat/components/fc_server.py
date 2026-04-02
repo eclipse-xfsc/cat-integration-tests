@@ -146,11 +146,22 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def get_schema(self, schema_id: str) -> requests.Response:
-        """GET /schemas/{schemaId}"""
+    def get_schema(self, schema_id: str, version: Optional[int] = None) -> requests.Response:
+        """GET /schemas/{schemaId}[?version=X]"""
         self._update_header()
+        params = {"version": version} if version is not None else None
         return self.http.get(
             url=f"{self.host}schemas/{schema_id}",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def update_schema(self, schema_id: str, payload: str, content_type: str = "application/json") -> requests.Response:
+        """PUT /schemas/{schemaId}"""
+        self._update_header(content_type=content_type)
+        return self.http.put(
+            url=f"{self.host}schemas/{schema_id}",
+            data=payload.encode("utf-8"),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 

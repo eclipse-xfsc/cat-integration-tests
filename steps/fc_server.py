@@ -260,9 +260,27 @@ def upload_schema_with_content_type(context: ContextType, fixture_path: str, con
 @when("get schema by response id")
 def get_schema_by_response_id(context: ContextType) -> None:
     schema_id = _extract_schema_id_from_response(context.requests_response)
-    assert schema_id, f"No schema ID in response: {context.requests_response.text[:200]}"
+    assert schema_id, f"No schema ID in response: {context.requests_response.text}"
     encoded = _url_encode_schema_id(schema_id)
     context.requests_response = context.fc_server.get_schema(encoded)
+
+
+@when("get schema by response id at version {version:d}")
+def get_schema_by_response_id_at_version(context: ContextType, version: int) -> None:
+    schema_id = _extract_schema_id_from_response(context.requests_response)
+    assert schema_id, f"No schema ID in response: {context.requests_response.text}"
+    encoded = _url_encode_schema_id(schema_id)
+    context.requests_response = context.fc_server.get_schema(encoded, version=version)
+
+
+@when('update schema from fixture "{fixture_path}" with content-type "{content_type}"')
+def update_schema_with_content_type(context: ContextType, fixture_path: str, content_type: str) -> None:
+    path = FIXTURES_DIR / fixture_path
+    payload = path.read_text()
+    schema_id = _extract_schema_id_from_fixture(path)
+    assert schema_id, f"Could not extract schema ID from fixture: {fixture_path}"
+    encoded = _url_encode_schema_id(schema_id)
+    context.requests_response = context.fc_server.update_schema(encoded, payload, content_type=content_type)
 
 
 @when("delete schema by response id")

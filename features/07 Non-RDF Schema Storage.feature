@@ -80,3 +80,17 @@ Feature: Non-RDF Schema Storage
     When upload schema from fixture "schemas/person.schema.json" with content-type "application/schema+json"
     Then get http 409:Conflict code
       And uploaded schemas are cleaned up
+
+  # -- Versioning ---------------------------------------------
+
+  @req.CAT-FR-SF-02
+  Scenario: Retrieve previous schema version after update
+    Given schema "schemas/person.schema.json" is cleaned up
+    When upload schema from fixture "schemas/person.schema.json" with content-type "application/schema+json"
+    Then get http 201:Created code
+    When update schema from fixture "schemas/person.v2.schema.json" with content-type "application/json"
+    Then get http 200:Success code
+    When get schema by response id at version 1
+    Then get http 200:Success code
+      And response body contains "Person"
+      And uploaded schemas are cleaned up
