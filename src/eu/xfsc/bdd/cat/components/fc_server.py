@@ -78,11 +78,32 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
-    def get_asset(self, asset_id: str) -> requests.Response:
-        """GET /assets/{id}"""
+    def get_asset(self, asset_id: str, version: Optional[int] = None) -> requests.Response:
+        """GET /assets/{id}[?version=X]"""
         self._update_header()
+        params = {"version": version} if version is not None else None
         return self.http.get(
             url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def update_asset(self, asset_id: str, payload: str, change_comment: Optional[str] = None) -> requests.Response:
+        """PUT /assets/{id}[?changeComment=...]"""
+        self._update_header(content_type="application/json")
+        params = {"changeComment": change_comment} if change_comment is not None else None
+        return self.http.put(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}",
+            data=payload.encode("utf-8"),
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def get_asset_versions(self, asset_id: str) -> requests.Response:
+        """GET /assets/{id}/versions"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/versions",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 

@@ -52,6 +52,46 @@ def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None
     context.requests_response = context.fc_server.add_asset(payload)
 
 
+@then('save asset id from last response')
+def save_asset_id_from_last_response(context: ContextType) -> None:
+    response_json = context.requests_response.json()
+    asset_id = response_json.get("id")
+    assert asset_id, f"Last response does not contain an 'id' field: {response_json}"
+    context.last_asset_id = asset_id
+
+
+@when('update saved asset with fixture "{fixture_path}"')
+def update_saved_asset_from_fixture(context: ContextType, fixture_path: str) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    payload = (FIXTURES_DIR / fixture_path).read_text()
+    context.requests_response = context.fc_server.update_asset(context.last_asset_id, payload)
+
+
+@when('get saved asset')
+def get_saved_asset(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.get_asset(context.last_asset_id)
+
+
+@when('get saved asset at version {version:d}')
+def get_saved_asset_at_version(context: ContextType, version: int) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.get_asset(context.last_asset_id, version=version)
+
+
+@when('get saved asset versions')
+def get_saved_asset_versions(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.get_asset_versions(context.last_asset_id)
+
+
+@then('response has {expected:d} total versions')
+def response_has_total_versions(context: ContextType, expected: int) -> None:
+    body = context.requests_response.json()
+    total = body.get("total")
+    assert total == expected, f"Expected total={expected}, got {total} in {body}"
+
+
 @when('get asset by id "{asset_id}"')
 def get_asset_by_id(context: ContextType, asset_id: str) -> None:
     context.requests_response = context.fc_server.get_asset(asset_id)
