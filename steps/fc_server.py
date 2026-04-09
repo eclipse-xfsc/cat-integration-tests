@@ -27,6 +27,7 @@ def check_fc_server_up(context: ContextType) -> None:
 # -- Assets (credentials) --
 
 @given('credential from fixture "{fixture_path}" is not uploaded')
+@then('credential from fixture "{fixture_path}" is not uploaded')
 def ensure_credential_not_uploaded(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
     asset_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -213,6 +214,21 @@ def _extract_schema_id_from_fixture(path: Path) -> str | None:
     return None
 
 
+def _extract_schema_id_from_conflict(resp: requests.Response) -> str | None:
+    """Extract schema ID from a 409 conflict response body (server-generated hash ID)."""
+    try:
+        body = resp.json()
+        msg = body.get("message", "")
+        # e.g. "A schema with id <hash> already exists."
+        if "schema with id" in msg and "already exists" in msg:
+            parts = msg.split()
+            idx = parts.index("id")
+            return parts[idx + 1]
+    except Exception:
+        pass
+    return None
+
+
 def _url_encode_schema_id(schema_id: str) -> str:
     return urllib.parse.quote(schema_id, safe="")
 
@@ -234,10 +250,11 @@ def upload_schema_from_fixture(context: ContextType, fixture_path: str) -> None:
     schema_id = _extract_schema_id_from_fixture(path)
 
     resp = context.fc_server.add_schema(payload, content_type=content_type)
-    if resp.status_code == 409 and schema_id:
-        encoded = _url_encode_schema_id(schema_id)
-        context.fc_server.delete_schema(encoded)
-        resp = context.fc_server.add_schema(payload, content_type=content_type)
+    if resp.status_code == 409:
+        conflict_id = schema_id or _extract_schema_id_from_conflict(resp)
+        if conflict_id:
+            context.fc_server.delete_schema(_url_encode_schema_id(conflict_id))
+            resp = context.fc_server.add_schema(payload, content_type=content_type)
 
     assert resp.status_code in (200, 201), \
         f"Schema upload failed: {resp.status_code}, {resp.content}"

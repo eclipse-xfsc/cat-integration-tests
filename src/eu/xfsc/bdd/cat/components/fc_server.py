@@ -1,6 +1,7 @@
 """
 Federated Catalogue Server BDD Wrapper
 """
+import json
 from typing import Any, Optional
 from urllib.parse import quote
 
@@ -220,5 +221,33 @@ class Server(BaseServiceKeycloak):
         self._update_header()
         return self.http.get(
             url=f"{self.host}session",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    # -- Admin API --
+
+    def get_admin_stats(self) -> requests.Response:
+        """GET /admin/stats"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/stats",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def set_schema_module_enabled(self, module_type: str, enabled: bool) -> requests.Response:
+        """PUT /admin/schema-validation/modules/{type}?enabled=<bool>"""
+        self._update_header(content_type=None)
+        return self.http.put(
+            url=f"{self.host}admin/schema-validation/modules/{module_type}",
+            params={"enabled": str(enabled).lower()},
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def set_trust_framework_enabled(self, framework_id: str, enabled: bool) -> requests.Response:
+        """PUT /admin/trust-frameworks/{id}/enabled?enabled=<bool>"""
+        self._update_header(content_type=None)
+        return self.http.put(
+            url=f"{self.host}admin/trust-frameworks/{framework_id}/enabled",
+            params={"enabled": str(enabled).lower()},
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
