@@ -43,7 +43,7 @@ Feature: Credential Upload
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
 
-  @regression @cfg.strict @cfg.test-sig
+  @regression @cfg.strict
   Scenario: Upload with valid signatures succeeds under strict config
     # Full end-to-end: signature verification + trust anchor + schema + semantics → 201.
     Given credential from fixture "valid/gaiax-participant.vp.signed.jsonld" is not uploaded
@@ -72,7 +72,7 @@ Feature: Credential Upload
     Then get http 201:Created code
       And response has empty validatorDids
 
-  @req.CAT-FR-SF-04 @cfg.strict @cfg.test-sig
+  @req.CAT-FR-SF-04 @cfg.strict
   Scenario: Upload response has validatorDids under strict config
     # counterpart: With signatures enabled (strict), the upload response
     # must contain validator DIDs from the credential's proof objects.
@@ -81,7 +81,7 @@ Feature: Credential Upload
     Then get http 201:Created code
       And response has non-empty validatorDids
 
-  @req.CAT-FR-SF-04 @cfg.strict @cfg.test-sig
+  @req.CAT-FR-SF-04 @cfg.strict
   Scenario: Upload credential that violates SHACL shape is rejected under strict config
     # With schema=true (strict config), SHACL validation IS enforced on upload.
     # The participant missing schema:legalName is rejected by the stored SHACL shape.

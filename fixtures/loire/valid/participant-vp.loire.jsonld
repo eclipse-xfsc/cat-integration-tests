@@ -1,0 +1,15 @@
+{
+  "iss": "did:web:did-server",
+  "@context": ["https://www.w3.org/ns/credentials/v2"],
+  "id": "urn:uuid:98765432-4321-4321-4321-cba987654321",
+  "type": ["VerifiablePresentation"],
+  "issuer": "did:web:did-server",
+  "validFrom": "2026-03-24T10:00:00Z",
+  "verifiableCredential": [
+    {
+      "@context": "https://www.w3.org/ns/credentials/v2",
+      "id": "data:application/vc+jwt,{{VC_JWT}}",
+      "type": "EnvelopedVerifiableCredential"
+    }
+  ]
+}

@@ -17,7 +17,7 @@ Use **two configurations** — default and strict — as an interim strategy. A 
 | Config | Compose command | Behaviour |
 |---|---|---|
 | **Default** | `docker compose up` | Semantics only — Gaia-X off, schema off, signatures off |
-| **Strict** | `docker compose -f docker-compose.yml -f docker-compose.strict.yml up` | Full verification — Gaia-X on, schema on, signatures on |
+| **Strict** | `./dev.sh strict` | Schema validation + signatures on; Gaia-X Trust Framework on |
 
 ### Tagging
 
@@ -25,14 +25,14 @@ Tests use two symmetric tags to mark config-specific scenarios:
 
 | Tag | Meaning |
 |---|---|
-| `@cfg.default` | Scenario expects default behaviour (would fail or be meaningless in strict) |
-| `@cfg.strict` | Scenario expects strict behaviour (would fail or be meaningless in default) |
+| `@cfg.default` | Scenario expects default behaviour (signatures/schema off) |
+| `@cfg.strict` | Scenario expects strict behaviour (schema on, signatures on) |
 | *(no @cfg tag)* | Config-agnostic — same expectation in both configs |
 
 ```bash
-# Default run — excludes strict-only scenarios and signature-dependent tests
+# Default run — excludes strict-only scenarios
 make run_cat_bdd_dev MODE=default
-# equivalent to: behave --tags='-@wip' --tags='-@cfg.strict' --tags='-@cfg.test-sig'
+# equivalent to: behave --tags='-@wip' --tags='-@cfg.strict'
 
 # Strict run — excludes default-only scenarios
 make run_cat_bdd_dev MODE=strict

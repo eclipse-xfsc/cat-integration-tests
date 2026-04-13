@@ -48,6 +48,15 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def add_asset_with_content_type(self, payload: str, content_type: str) -> requests.Response:
+        """POST /assets with specified Content-Type (e.g. application/ld+json, application/vc)"""
+        self._update_header(content_type=content_type)
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}",
+            data=payload.encode("utf-8"),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     def add_asset_multipart(
         self, file_content: bytes, content_type: str, filename: str,
     ) -> requests.Response:

@@ -23,7 +23,7 @@ Feature: Query
     Then get http 200:Success code
       And query result contains "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd"
 
-  @smoke @cfg.strict @cfg.test-sig
+  @smoke @cfg.strict
   Scenario: Query uploaded credential by credential subject
     # Strict profile: full verification chain. Signed fixture required.
     Given credential from fixture "valid/gaiax-participant.vp.signed.jsonld" is not uploaded

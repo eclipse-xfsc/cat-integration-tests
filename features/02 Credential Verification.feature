@@ -11,12 +11,12 @@ Feature: Credential Verification
 
   # Smoke test: fixture uses legacy @type (http://w3id.org/gaia-x/participant#Participant)
   # which does not match any loaded ontology — server rejects with semantic error.
-  @smoke @cfg.test-sig
+  @smoke @cfg.strict
   Scenario: Verify credential with unrecognised type returns semantic error
     When verify credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
 
-  @smoke @req.CAT-FR-CO-01 @cfg.default @cfg.test-sig
+  @smoke @req.CAT-FR-CO-01 @cfg.default @cfg.strict
   Scenario: Verify credential with correct ontology type passes semantic check
     # Uses fixture with @type matching loaded ontology (https://w3id.org/gaia-x/core#Participant).
     # Signatures are skipped because the fixture is not signed.
@@ -62,7 +62,7 @@ Feature: Credential Verification
     When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
     Then get http 200:Success code
 
-  @smoke @regression @cfg.test-sig
+  @smoke @regression @cfg.strict
   Scenario: Verification with valid signatures passes
     # Fixture signed with JsonWebSignature2020 + did:web.
     When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.signed.jsonld"

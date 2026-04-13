@@ -6,7 +6,7 @@ SHELL := /bin/bash -eu -o pipefail
 # Required environment variables for BDD test targets (run_cat_bdd_*).
 # Source env.sh before running:  source env.sh
 # ---------------------------------------------------------------------------
-REQUIRED_BDD_VARS := CAT_FC_HOST CAT_KEYCLOAK_URL CAT_KEYCLOAK_REALM CAT_TEST_USER CAT_TEST_PASSWORD
+REQUIRED_BDD_VARS := CAT_FC_HOST CAT_KEYCLOAK_URL CAT_KEYCLOAK_CLIENT_ID CAT_KEYCLOAK_CLIENT_SECRET CAT_KEYCLOAK_REALM CAT_TEST_USER CAT_TEST_PASSWORD
 
 define check_bdd_env
 $(foreach var,$(REQUIRED_BDD_VARS),\
@@ -68,7 +68,7 @@ code_check: \
 # --- Config-aware BDD targets ---
 # MODE selects which server profile the tests run against.
 # Usage:
-#   make run_cat_bdd_dev MODE=default   # excludes @cfg.strict and @cfg.test-sig
+#   make run_cat_bdd_dev MODE=default   # excludes @cfg.strict
 #   make run_cat_bdd_dev MODE=strict    # excludes @cfg.default
 #   make run_cat_bdd_dev                # default mode
 #
@@ -78,7 +78,7 @@ MODE ?= default
 
 # v1 tag syntax: comma = OR, multiple --tags = AND.
 # Each negation must be a separate --tags flag for AND semantics.
-BEHAVE_TAGS_default := --tags='-@wip' --tags='-@cfg.strict' --tags='-@cfg.test-sig'
+BEHAVE_TAGS_default := --tags='-@wip' --tags='-@cfg.strict'
 BEHAVE_TAGS_strict  := --tags='-@wip' --tags='-@cfg.default'
 BEHAVE_TAG_FILTER   := $(BEHAVE_TAGS_$(MODE))
 ifeq ($(BEHAVE_TAG_FILTER),)

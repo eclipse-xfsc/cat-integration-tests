@@ -1,12 +1,12 @@
 import hashlib
-from pathlib import Path
-
+import json
 import requests
-from behave import given, when, then
-
-from eu.xfsc.bdd.core.server.keycloak import KeycloakServer, Token
-
+import urllib.parse
+import xml.etree.ElementTree as ET
+from behave import given, when, then, use_step_matcher
 from eu.xfsc.bdd.cat.components.fc_server import Server
+from eu.xfsc.bdd.core.server.keycloak import KeycloakServer, Token
+from pathlib import Path
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -17,6 +17,12 @@ class ContextType:
     requests_response: requests.Response
     FileToken: Token
 
+CONTENT_TYPE_MAP = {
+    ".ttl": "text/turtle",
+    ".jsonld": "application/ld+json",
+    ".json": "application/json",
+    ".rdf": "application/rdf+xml",
+}
 
 @given("Federated Catalogue Server is up")
 def check_fc_server_up(context: ContextType) -> None:
@@ -25,6 +31,23 @@ def check_fc_server_up(context: ContextType) -> None:
 
 
 # -- Assets (credentials) --
+
+####### Regex based matching for parser-ambiguous step definitions ######
+use_step_matcher("re")
+
+# behave could not match this step correctly and reported a duplicatestep definition, we fix it with a regex
+@when(r'add credential from fixture "(?P<fixture_path>[^"]+)"')
+def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
+    payload = (FIXTURES_DIR / fixture_path).read_text()
+    context.requests_response = context.fc_server.add_asset(payload)
+
+@when(r'verify credential from fixture "(?P<fixture_path>[^"]+)"')
+def verify_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
+    payload = (FIXTURES_DIR / fixture_path).read_text()
+    context.requests_response = context.fc_server.verify(payload)
+
+
+use_step_matcher("parse")
 
 @given('credential from fixture "{fixture_path}" is not uploaded')
 @then('credential from fixture "{fixture_path}" is not uploaded')
@@ -46,11 +69,11 @@ def add_credential(context: ContextType) -> None:
     assert context.text, "Step requires docstring with credential payload"
     context.requests_response = context.fc_server.add_asset(context.text)
 
-
-@when('add credential from fixture "{fixture_path}"')
-def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
+@when('add credential from fixture "{fixture_path}" with content-type "{content_type}"')
+def add_credential_from_fixture_with_content_type(
+        context: ContextType, fixture_path: str, content_type: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
-    context.requests_response = context.fc_server.add_asset(payload)
+    context.requests_response = context.fc_server.add_asset_with_content_type(payload, content_type)
 
 
 @then('save asset id from last response')
@@ -125,12 +148,6 @@ def verify_credential(context: ContextType) -> None:
     context.requests_response = context.fc_server.verify(context.text)
 
 
-@when('verify credential from fixture "{fixture_path}"')
-def verify_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
-    payload = (FIXTURES_DIR / fixture_path).read_text()
-    context.requests_response = context.fc_server.verify(payload)
-
-
 @when('verify credential from fixture "{fixture_path}" skipping signatures')
 def verify_credential_from_fixture_skip_sigs(context: ContextType, fixture_path: str) -> None:
     payload = (FIXTURES_DIR / fixture_path).read_text()
@@ -179,18 +196,6 @@ def query_result_contains(context: ContextType, expected_value: str) -> None:
 
 
 # -- Schemas --
-
-import json
-import urllib.parse
-import xml.etree.ElementTree as ET
-
-CONTENT_TYPE_MAP = {
-    ".ttl": "text/turtle",
-    ".jsonld": "application/ld+json",
-    ".json": "application/json",
-    ".rdf": "application/rdf+xml",
-}
-
 
 def _extract_schema_id_from_response(resp: requests.Response) -> str | None:
     """Extract schema ID from a 201 response JSON body."""
@@ -268,11 +273,13 @@ def upload_schema_from_fixture_with_ct(context: ContextType, fixture_path: str, 
     schema_id = _extract_schema_id_from_fixture(path)
 
     resp = context.fc_server.add_schema(payload, content_type=content_type)
-    if resp.status_code == 409 and schema_id:
-        # Already exists — delete and re-upload for a clean response
-        encoded = _url_encode_schema_id(schema_id)
-        context.fc_server.delete_schema(encoded)
-        resp = context.fc_server.add_schema(payload, content_type=content_type)
+    if resp.status_code == 409:
+        conflict_id = schema_id or _extract_schema_id_from_conflict(resp)
+        if conflict_id:
+            # Already exists — delete and re-upload for a clean response
+            encoded = _url_encode_schema_id(conflict_id)
+            context.fc_server.delete_schema(encoded)
+            resp = context.fc_server.add_schema(payload, content_type=content_type)
 
     assert resp.status_code in (200, 201), \
         f"Schema upload failed: {resp.status_code}, {resp.content}"

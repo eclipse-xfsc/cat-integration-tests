@@ -1,0 +1,28 @@
+{
+  "iss": "did:web:did-server",
+  "sub": "did:web:participant.example.com",
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#"
+  ],
+  "id": "urn:uuid:12345678-1234-1234-1234-123456789012",
+  "type": ["VerifiableCredential", "gx:LegalPerson"],
+  "issuer": "did:web:did-server",
+  "validFrom": "2026-01-01T00:00:00Z",
+  "validUntil": "2027-12-31T23:59:59Z",
+  "credentialSubject": {
+    "id": "did:web:participant.example.com",
+    "@type": "gx:LegalPerson",
+    "gx:registrationNumber": {
+      "@type": "gx:RegistrationNumber"
+    },
+    "gx:headquartersAddress": {
+      "@type": "gx:Address",
+      "gx:countryCode": "DE"
+    },
+    "gx:legalAddress": {
+      "@type": "gx:Address",
+      "gx:countryCode": "DE"
+    }
+  }
+}
