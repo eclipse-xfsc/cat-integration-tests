@@ -2,11 +2,12 @@
 Feature: VC 2.0 Credential Support
   As a Federated Catalogue API consumer
   I want to upload Verifiable Credentials in VC 2.0 format
-  So that the catalogue accepts both VC 1.1 and VC 2.0 ecosystems
+  So that the catalogue accepts modern credential ecosystems
 
   # Default server config: verifyVCSignatures=false, verifyVPSignatures=false
   # VC 2.0 uses "validFrom" instead of "issuanceDate" and the v2 context URI.
   # Loire format: credential claims at top level, typ=vc+jwt (IANA), no vc/vp wrapper.
+  # VC 1.1 (Tagus-era) credentials are no longer accepted — see CAT-TECH-01.
 
   Background:
     Given CAT Keycloak is up
@@ -48,8 +49,8 @@ Feature: VC 2.0 Credential Support
     Then get http 422:Unprocessable Entity code
 
   @smoke @regression @cfg.default
-  Scenario: VC 1.1 credential continues to be accepted after VC 2.0 support added
-    # Backward compatibility: VC 1.1 fixture with "issuanceDate" must still succeed.
+  Scenario: VC 2.0 JSON-LD VP is accepted without JWT envelope in default mode
+    # Default config: signatures off. A VC 2.0 JSON-LD VP (no JWT) is accepted.
     Given credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
     Then get http 201:Created code
