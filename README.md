@@ -345,11 +345,3 @@ Because `did:web` provides indirection, the signed fixtures do **not** need to b
 ### Upstream
 
 - The upstream bdd-executor `KeycloakServer.fetch_token()` hardcodes `client_credentials` grant. This is overridden locally via `CatKeycloakServer`. A PR to make grant type configurable is planned.
-
-## Background
-
-The original implementation of the federated catalogue came with a set of pre-acceptance tests
-that can be found at https://gitlab.com/gaia-x/data-infrastructure-federation-services/cat/pre-acceptance-testing/-/blob/main/Test_Stand.postman_collection.json?ref_type=heads.
-
-These were based on a Postman collection that is archived in the `archived/` folder.
-There is a newer collection at https://github.com/eclipse-xfsc/federated-catalogue/tree/main/fc-tools, but that one was lacking concrete payloads and assertions.
