@@ -24,12 +24,12 @@ Feature: Admin API — Runtime Configuration
       And SHACL schema module is re-enabled
       And uploaded schemas are cleaned up
 
-  @baseline @cfg.strict @cfg.test-sig
+  @baseline @cfg.strict
   Scenario: SHACL module re-enabled via admin API — violating credential rejected
-    # Re-enable SHACL (default for strict); credential missing legalName is rejected.
+    # Re-enable SHACL (default for strict); credential missing gx:legalName is rejected.
     Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
       And SHACL schema module is enabled
-    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.signed.jsonld"
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
       And uploaded schemas are cleaned up
 
@@ -48,17 +48,17 @@ Feature: Admin API — Runtime Configuration
   Scenario: Gaia-X trust framework enabled — credential with valid trust anchor accepted
     # Full Gaia-X validation: type check + x5u + Trust Anchor Registry call → 201.
     Given Gaia-X trust framework is enabled
-      And credential from fixture "valid/gaiax-participant.vp.signed.jsonld" is not uploaded
-    When add credential from fixture "valid/gaiax-participant.vp.signed.jsonld"
+      And credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant-vp.loire.signed.jwt" with content-type "application/vp+jwt"
     Then get http 201:Created code
-      And credential from fixture "valid/gaiax-participant.vp.signed.jsonld" is not uploaded
+      And credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
 
-  @baseline @cfg.strict @cfg.test-sig
+  @baseline @cfg.strict
   Scenario: Gaia-X trust framework enabled — credential with unrecognized type rejected
     # Credential subject type (legacy participant# namespace) is not in the recognized base class URIs
     # → hasClasses() = false → 422 Unprocessable Entity.
     Given Gaia-X trust framework is enabled
-    When add credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.signed.jsonld"
+    When add credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
 
   # ---------------------------------------------------------------------------

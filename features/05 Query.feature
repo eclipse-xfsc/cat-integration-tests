@@ -18,20 +18,20 @@ Feature: Query
     Then get http 201:Created code
     When execute openCypher query
       """
-      MATCH (n:Participant) RETURN n.uri LIMIT 10
+      MATCH (n:LegalPerson) RETURN n.uri LIMIT 10
       """
     Then get http 200:Success code
       And query result contains "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd"
 
-  @smoke @cfg.strict
+  @smoke @cfg.strict @cfg.test-sig
   Scenario: Query uploaded credential by credential subject
-    # Strict profile: full verification chain. Signed fixture required.
-    Given credential from fixture "valid/gaiax-participant.vp.signed.jsonld" is not uploaded
-    When add credential from fixture "valid/gaiax-participant.vp.signed.jsonld"
+    # Strict profile: full verification chain. Loire JWT fixture required.
+    Given credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant-vp.loire.signed.jwt" with content-type "application/vp+jwt"
     Then get http 201:Created code
     When execute openCypher query
       """
-      MATCH (n:Participant) RETURN n.uri LIMIT 10
+      MATCH (n:LegalPerson) RETURN n.uri LIMIT 10
       """
     Then get http 200:Success code
-      And query result contains "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd"
+      And query result contains "did:web:participant.example.com"

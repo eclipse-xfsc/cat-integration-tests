@@ -62,8 +62,8 @@ Feature: Credential Verification
     When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
     Then get http 200:Success code
 
-  @smoke @regression @cfg.strict
+  @smoke @regression @cfg.strict @cfg.test-sig
   Scenario: Verification with valid signatures passes
-    # Fixture signed with JsonWebSignature2020 + did:web.
-    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.signed.jsonld"
+    # Loire JWT fixture signed with EdDSA + did:web.
+    When verify credential from fixture "loire/valid/participant.vc2.signed.jwt"
     Then get http 200:Success code
