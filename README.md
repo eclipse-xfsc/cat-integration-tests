@@ -118,11 +118,16 @@ src/eu/xfsc/bdd/cat/        # Shared Python package
     fc_server.py             #   Server wrapper (BaseServiceKeycloak)
     keycloak.py              #   CatKeycloakServer (password grant override)
 fixtures/                    # Test payloads
-  valid/                     #   Unsigned (*.vp.jsonld) + signed (*.vp.signed.jsonld)
+  valid/                     #   VC 2.0 JSON-LD fixtures (unsigned, for skip-signature tests)
+  loire/valid/               #   Loire JWT fixtures (signed, for signature-verification tests)
+  enveloped/valid/           #   EnvelopedVerifiableCredential/Presentation fixtures
+  vc20/invalid/              #   VC 2.0 negative test fixtures (bad signature, expired, etc.)
   invalid/                   #   Deliberately broken payloads for negative tests
+  schemas/                   #   SHACL and JSON/XML Schema fixtures
 scripts/                     # Dev / diagnostic utilities
-  generate-did-jwk.py         #   Generate did:jwk DID (diagnostic — not used in normal workflow)
-  decode-did-jwk.py           #   Decode did:jwk DID to inspect embedded JWK (diagnostic)
+  generate-jwt-fixture.py    #   Sign JSON-LD payloads as JWT fixtures (Ed25519/EdDSA)
+  generate-did-jwk.py        #   Generate did:jwk DID (diagnostic — not used in normal workflow)
+  decode-did-jwk.py          #   Decode did:jwk DID to inspect embedded JWK (diagnostic)
 tests/                       # Unit tests for shared utilities
 archived/                    # Legacy Postman collection (reference only)
 environment.py               # Behave hooks (before_all)
@@ -189,62 +194,76 @@ scenario requires, so CI can run exactly the right subset per deployment variant
 | `@cfg.gaiax` | `trust-framework.gaiax.enabled` | `true` |
 | `@cfg.no-gaiax` | `trust-framework.gaiax.enabled` | `false` |
 | `@cfg.real-sig` | Signature verification | enabled (real DIDs) |
-| `@cfg.test-sig` | Signature verification | skipped (test fixtures) |
+| `@cfg.test-sig` | Signature verification | enabled (did-server test infrastructure) |
 
 Scenarios without `@cfg.*` tags are config-agnostic and run in every variant.
 
 ## Signed Test Fixtures
 
-The FC server verifies LD-Signatures on uploaded credentials by resolving the DID in the proof's `verificationMethod` field and checking the cryptographic signature against the public key.
+The FC server verifies JWT signatures on uploaded credentials by resolving the DID in the JWT `kid` header, fetching the public key from the DID document, and verifying the signature. Linked Data proof verification was removed with the Tagus-era cleanup (CAT-TECH-01) — only JWT and Enveloped Credential formats are accepted.
 
 Test fixtures use **`did:web`** — the same DID method that real Gaia-X participants use. The DID resolves to a DID document hosted by the docker-compose `did-server` service, which also serves the X.509 certificate chain and mocks the trust anchor registry. See [ADR-002](docs/adr/002-did-web-over-did-jwk.md) for the rationale behind this choice.
 
 ### Pre-signed fixtures (committed to repo)
 
-Signed fixtures in `fixtures/valid/` are committed to git and work everywhere out of the box. **You do not need to re-sign them for normal test runs.**
+Signed JWT fixtures in `fixtures/loire/valid/` and `fixtures/enveloped/valid/` are committed to git and work out of the box. **You do not need to re-sign them for normal test runs.**
 
 ### When to re-sign
 
-Re-sign only when you **change the content** of an unsigned fixture template in `fixtures/unsigned/` (e.g. different `credentialSubject` fields, new `@type`). Changing the JSON-LD content invalidates the existing signature.
+Re-sign only when you **change the content** of a JSON-LD source file (e.g. different `credentialSubject` fields, new `@type`). Changing the payload content invalidates the existing JWT signature.
 
-### How to sign
+### How to sign (JWT — current)
 
 ```bash
-# Prerequisites: Java 21+, fc-tools-signer fat jar + its RSA key
-# Build the signer from federated-catalogue source (one-time):
-#   cd <federated-catalogue>/fc-tools/signer && mvn package -DskipTests
+# Prerequisites: pip install PyJWT[crypto] cryptography
 
-FC_SIGNER_JAR=/path/to/fc-tools-signer-2.1.0-SNAPSHOT-full.jar \
-FC_SIGNER_KEY=/path/to/rsa2048.sign.pem \
-  make sign-fixtures
+# Sign a Loire VC (auto-detects typ/cty from payload)
+python3 scripts/generate-jwt-fixture.py \
+    --payload fixtures/loire/valid/participant.loire.jsonld
+
+# Sign a Loire VP with inner VC embedding
+python3 scripts/generate-jwt-fixture.py \
+    --payload fixtures/loire/valid/participant-vp.loire.jsonld \
+    --embed-vc fixtures/loire/valid/participant.loire.jsonld
+
+# Produce an EnvelopedVerifiableCredential (Gaia-X ICAM 24.07)
+python3 scripts/generate-jwt-fixture.py \
+    --payload fixtures/loire/valid/participant.loire.jsonld \
+    --wrap-as evc --out fixtures/enveloped/valid/participant.evc.jsonld
+
+# Use existing key (recommended for reproducibility)
+python3 scripts/generate-jwt-fixture.py \
+    --payload fixtures/loire/valid/participant.loire.jsonld \
+    --key keys/jwt-signing.pem
 ```
 
-This signs every `*.vp.jsonld` (excluding `*.signed.jsonld`) in `fixtures/valid/` and places the signed output alongside with a `.signed.jsonld` suffix.
+See `scripts/generate-jwt-fixture.py --help` for all options.
 
-### File layout
+### Fixture directories
 
-```
-fixtures/
-  valid/
-    gaiax-participant-correct-type.vp.jsonld          # Unsigned source (used with skip-sigs)
-    gaiax-participant-correct-type.vp.signed.jsonld   # ← signed output (did:web, PS256)
-    gaiax-participant-legacy-type.vp.jsonld            # Unsigned (wrong @type — negative test)
-    gaiax-participant-legacy-type.vp.signed.jsonld     # ← signed output
-    gaiax-participant.vp.jsonld                        # Unsigned (JWS-2020 context, no legacy proofs)
-    gaiax-participant.vp.signed.jsonld                 # ← signed output
-    gaiax-participant-minimal-ctx.vp.jsonld            # Unsigned (minimal context)
-    gaiax-participant-minimal-ctx.vp.signed.jsonld     # ← signed output
-  invalid/
-    hasInvalidSignature.jsonld                         # Corrupted JWS
-    hasNoSignature1.jsonld                             # Missing proof
-    participant_without_proofs.json                    # No proof objects at all
-    credential-without-credential-subject.json           # Missing credentialSubject
-    credential-without-issuer.json                     # Missing issuer
-```
+| Directory | Purpose |
+|-----------|---------|
+| `valid/` | VC 2.0 JSON-LD (unsigned) — for skip-signature and SHACL tests |
+| `loire/valid/` | Loire JWT fixtures (signed Ed25519/EdDSA) — for signature-verification tests |
+| `enveloped/valid/` | EnvelopedVerifiableCredential/Presentation wrappers |
+| `vc20/invalid/` | VC 2.0 negative tests (bad signature, expired, mismatched issuer) |
+| `invalid/` | Structurally broken payloads (missing fields) |
+| `schemas/` | SHACL, JSON Schema, XML Schema fixtures |
+
+### Naming conventions
+
+| Pattern | Meaning |
+|---------|---------|
+| `*.jsonld` | JSON-LD source (human-readable, diffable) |
+| `*.signed.jwt` | Signed JWT output (generated from matching `.jsonld`) |
+| `*.loire.jsonld` | Loire format (claims at top level, `typ: vc+jwt`) |
+| `*.vc2.jsonld` | Danubetech VC 2.0 format (`vc` wrapper claim) |
+| `*-vp.*` / `*.vp2.*` | Verifiable Presentation (may embed inner VC) |
+| `*.evc.jsonld` / `*.evp.jsonld` | Enveloped credential/presentation |
 
 ### Key material
 
-The signing key (`rsa2048.sign.pem`) and signer tool live in the `fc-tools/signer` module of the [federated-catalogue](https://gitlab.eclipse.org/eclipse/xfsc/cat/fc-service) repo. The corresponding public key is encoded in the `did:jwk:` URI used as `verificationMethod` in the proof — since `did:jwk` is self-describing, no external key server or DID registry is needed.
+JWT fixtures are signed with **Ed25519** (algorithm: `EdDSA`). The signing key is generated by `generate-jwt-fixture.py` on first use. The corresponding public key JWK is added to the `did:web:did-server` DID document (`docker/did-server/www/.well-known/did.json`). See `generate-jwt-fixture.py` output for the DID document snippet to copy.
 
 ## Test Profiles & Trust Configuration
 
@@ -307,8 +326,6 @@ Because `did:web` provides indirection, the signed fixtures do **not** need to b
 
 ## Known Issues
 
-### Infrastructure  
-
 ### Infrastructure
 
 - **`FC_CLIENT_SECRET` in `dev.env`** — The default `dev.env` ships with `FC_CLIENT_SECRET=**********` (placeholder). This must be replaced with the actual Keycloak client secret, otherwise `GET /session`, `GET /participants`, and all user endpoints return 500 (the FC server fails to authenticate to Keycloak admin API).
@@ -316,24 +333,15 @@ Because `did:web` provides indirection, the signed fixtures do **not** need to b
 
 ### Signature Verification
 
-- **`alg` field required in JWK** — `LocalSignatureVerifier` reads the algorithm from `jwk.getAlg()`. If the DID document's JWK omits `"alg": "PS256"`, verification fails with `"VerifiableCredential does not match with proof"`. Unlike `UniSignatureVerifier`, `LocalSignatureVerifier` does not fall back to the JWS header algorithm.
-- **Weak RSA keys rejected after uni-resolver-client upgrade** — Bouncy Castle (pulled in transitively by the upgrade) rejects the bundled `rsa2048.sign.pem` with `"RSA modulus has a small prime factor"`. This surfaces misleadingly as a signature mismatch in the HTTP response — the real error is only in server logs. Fix: generate a new key with `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048`.
+- **JWT signatures only** — The FC only accepts JWT (EdDSA, PS256, RS256) and Enveloped Credential formats. Linked Data proofs (`JsonWebSignature2020`, `Ed25519Signature2018`) are rejected with `"Linked Data proof verification is not supported"`. All signed fixtures must be JWT.
 - **`assets.validators` column width** — The default varchar(256) column in PostgreSQL may truncate long DIDs. With `did:web` this is not an issue, but if `did:jwk` is used for debugging, its ~800-char URIs require a database migration to `varchar(2048)[]`.
-- **Only `JsonWebSignature2020` is supported** — Old fixtures using `Ed25519Signature2018` fail with `"Ed25519Signature2018 not supported"`. All fixtures must use PS256/RSA with JWS 2020.
 - **Python `requests.post(data=string)` sends wrong encoding** — Passing a JSON-LD string directly as `data=` adds charset headers that confuse the FC server's Jackson parser (returns 400: `"Unexpected end-of-input"`). Fix: always use `data=payload.encode("utf-8")`. Already applied in `src/eu/xfsc/bdd/cat/components/fc_server.py`.
 
 ### Fixtures & Content
 
-- **Fixture `@type` namespace** — Valid test fixtures must use `https://w3id.org/gaia-x/core#Participant` (not the legacy `http://w3id.org/gaia-x/participant#Participant`) to match the auto-loaded ontology.
+- **VC 2.0 context required** — All credentials must include `https://www.w3.org/ns/credentials/v2` in their `@context`. VC 1.1 (`https://www.w3.org/2018/credentials/v1`) is no longer accepted (CAT-TECH-01).
+- **Fixture `@type` namespace** — Valid test fixtures use `https://w3id.org/gaia-x/2511#LegalPerson` (via `gx:` prefix with `https://w3id.org/gaia-x/2511#` context). The legacy `http://w3id.org/gaia-x/participant#Participant` namespace is used only in negative test fixtures for semantic rejection.
 
 ### Upstream
 
 - The upstream bdd-executor `KeycloakServer.fetch_token()` hardcodes `client_credentials` grant. This is overridden locally via `CatKeycloakServer`. A PR to make grant type configurable is planned.
-
-## Background
-
-The original implementation of the federated catalogue came with a set of pre-acceptance tests
-that can be found at https://gitlab.com/gaia-x/data-infrastructure-federation-services/cat/pre-acceptance-testing/-/blob/main/Test_Stand.postman_collection.json?ref_type=heads.
-
-These were based on a Postman collection that is archived in the `archived/` folder.
-There is a newer collection at https://github.com/eclipse-xfsc/federated-catalogue/tree/main/fc-tools, but that one was lacking concrete payloads and assertions.
