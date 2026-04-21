@@ -1,0 +1,5 @@
+{
+  "@context": {"ex": "http://example.org/"},
+  "@id": "ex:item1",
+  "ex:name": "Cloud Storage Service"
+}

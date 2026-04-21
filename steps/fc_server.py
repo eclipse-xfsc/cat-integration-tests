@@ -170,6 +170,12 @@ def execute_opencypher_query(context: ContextType) -> None:
     context.requests_response = context.fc_server.query(context.text, query_language="opencypher")
 
 
+@when("execute SPARQL query")
+def execute_sparql_query(context: ContextType) -> None:
+    assert context.text, "Step requires docstring with SPARQL query"
+    context.requests_response = context.fc_server.query(context.text, query_language="sparql")
+
+
 @then('response has empty validatorDids')
 def response_has_empty_validator_dids(context: ContextType) -> None:
     body = context.requests_response.json()
