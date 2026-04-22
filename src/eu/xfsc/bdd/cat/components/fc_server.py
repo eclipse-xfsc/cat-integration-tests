@@ -288,3 +288,24 @@ class Server(BaseServiceKeycloak):
             params={"enabled": str(enabled).lower()},
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
+
+    # -- Validation Results (CO-02) --
+
+    def get_asset_validations(
+        self, asset_id: str, params: Optional[dict[str, Any]] = None
+    ) -> requests.Response:
+        """GET /assets/{id}/validations[?offset=X&limit=Y]"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/validations",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def get_validation_result(self, validation_id: int) -> requests.Response:
+        """GET /validations/{id}"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}validations/{validation_id}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
