@@ -402,6 +402,7 @@ def schema_listing_xml_schemas_contains(context: ContextType, expected_id: str) 
 # -- Assets (non-RDF uploads) --
 
 @given('asset from fixture "{fixture_path}" is not uploaded')
+@then('asset from fixture "{fixture_path}" is not uploaded')
 def ensure_asset_not_uploaded(context: ContextType, fixture_path: str) -> None:
     file_content = (FIXTURES_DIR / fixture_path).read_bytes()
     asset_hash = hashlib.sha256(file_content).hexdigest()
@@ -419,6 +420,57 @@ def add_asset_multipart(context: ContextType, fixture_path: str, content_type: s
         content_type=content_type,
         filename=path.name,
     )
+
+
+@when('upload human-readable from fixture "{fixture_path}" with content-type "{content_type}" for saved asset')
+def upload_human_readable_for_saved_asset(context: ContextType, fixture_path: str, content_type: str) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    path = FIXTURES_DIR / fixture_path
+    file_content = path.read_bytes()
+    context.requests_response = context.fc_server.upload_human_readable(
+        mr_id=context.last_asset_id,
+        file_content=file_content,
+        content_type=content_type,
+        filename=path.name,
+    )
+
+
+@then('save human-readable id from last response')
+def save_human_readable_id_from_last_response(context: ContextType) -> None:
+    response_json = context.requests_response.json()
+    hr_id = response_json.get("id")
+    assert hr_id, f"Last response does not contain an 'id' field: {response_json}"
+    context.last_hr_id = hr_id
+
+
+@when('get human-readable for saved asset')
+def get_human_readable_for_saved_asset(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.get_human_readable(context.last_asset_id)
+
+
+@when('get saved human-readable asset')
+def get_saved_human_readable_asset(context: ContextType) -> None:
+    assert hasattr(context, "last_hr_id"), "No saved human-readable id — call 'save human-readable id from last response' first"
+    context.requests_response = context.fc_server.get_asset(context.last_hr_id)
+
+
+@then('response humanReadableId matches saved human-readable id')
+def response_human_readable_id_matches(context: ContextType) -> None:
+    assert hasattr(context, "last_hr_id"), "No saved human-readable id — call 'save human-readable id from last response' first"
+    body = context.requests_response.json()
+    actual = body.get("humanReadableId")
+    assert actual == context.last_hr_id, \
+        f"Expected humanReadableId '{context.last_hr_id}', got '{actual}' in {body}"
+
+
+@then('response machineReadableId matches saved asset id')
+def response_machine_readable_id_matches(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    body = context.requests_response.json()
+    actual = body.get("machineReadableId")
+    assert actual == context.last_asset_id, \
+        f"Expected machineReadableId '{context.last_asset_id}', got '{actual}' in {body}"
 
 
 @when('add asset from fixture "{fixture_path}" as raw binary')

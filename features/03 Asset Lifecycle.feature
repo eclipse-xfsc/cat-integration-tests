@@ -39,12 +39,14 @@ Feature: Asset Lifecycle
     When get asset by id from last response
     Then get http 200:Success code
 
-  @req.CAT-FR-AM-02 @cfg.default
-  Scenario: Retrieve non-RDF asset by IRI returns 400
-    # Non-RDF assets (PDF, binary) cannot be retrieved via GET /assets/{id} — raw content
-    # download requires a dedicated endpoint (future story CAT-FR-SF-03).
+  @req.CAT-FR-AM-02 @req.CAT-FR-SF-03 @cfg.default
+  Scenario: Retrieve non-RDF asset by IRI returns metadata
+    # Non-RDF assets (PDF, binary) are retrievable via GET /assets/{id} — returns metadata
+    # (humanReadableId, machineReadableId, contentType, etc.). Binary content download
+    # requires the dedicated endpoint POST/GET /assets/{id}/human-readable (CAT-FR-SF-03).
     Given asset from fixture "valid/non-rdf/sample.pdf" is not uploaded
     When add asset from fixture "valid/non-rdf/sample.pdf" with content-type "application/pdf"
     Then get http 201:Created code
     When get asset by id from last response
-    Then get http 400:Bad Request
+    Then get http 200:Success code
+    Then asset from fixture "valid/non-rdf/sample.pdf" is not uploaded
