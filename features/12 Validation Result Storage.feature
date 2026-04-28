@@ -21,12 +21,10 @@ Feature: Validation Result Storage — Retrieval API
     Then get http 200:Success code
       And response has empty list
 
-  @baseline
   Scenario: Get validation results for non-existent asset — returns 404
     When get validations for asset "did:web:nonexistent.example.org"
     Then get http 404:Not Found code
 
-  @baseline
   Scenario: Get single validation result by ID — returns 404 for non-existent ID
     # Validation result ID 999999 does not exist → 404.
     When get validation result by id 999999
