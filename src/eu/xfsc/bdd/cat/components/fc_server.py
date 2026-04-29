@@ -117,6 +117,68 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    # -- Provenance --
+
+    def add_provenance_credential(
+        self, asset_id: str, payload: str, version: Optional[int] = None
+    ) -> requests.Response:
+        """POST /assets/{id}/provenance[?version=N]"""
+        self._update_header(content_type="application/json")
+        params = {"version": version} if version is not None else None
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/provenance",
+            data=payload.encode("utf-8"),
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def list_provenance_credentials(
+        self, asset_id: str, version: Optional[int] = None,
+        page: Optional[int] = None, size: Optional[int] = None
+    ) -> requests.Response:
+        """GET /assets/{id}/provenance"""
+        self._update_header()
+        params: dict = {}
+        if version is not None:
+            params["version"] = version
+        if page is not None:
+            params["page"] = page
+        if size is not None:
+            params["size"] = size
+        return self.http.get(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/provenance",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def get_provenance_credential(self, asset_id: str, credential_id: str) -> requests.Response:
+        """GET /assets/{id}/provenance/{credentialId}"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/provenance/{quote(credential_id, safe='')}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def verify_provenance_credential(self, asset_id: str, credential_id: str) -> requests.Response:
+        """POST /assets/{id}/provenance/{credentialId}/verify"""
+        self._update_header(content_type=None)
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/provenance/{quote(credential_id, safe='')}/verify",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def verify_all_provenance_credentials(
+        self, asset_id: str, version: Optional[int] = None
+    ) -> requests.Response:
+        """POST /assets/{id}/provenance/verify"""
+        self._update_header(content_type=None)
+        params = {"version": version} if version is not None else None
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/provenance/verify",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
     def delete_asset(self, asset_hash: str) -> requests.Response:
         """DELETE /assets/{asset_hash}"""
         self._update_header()

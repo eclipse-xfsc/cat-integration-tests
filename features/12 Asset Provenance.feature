@@ -1,0 +1,52 @@
+@domain.asset @req.CAT-FR-LM-02 @cfg.default
+Feature: Asset Provenance and Versioning
+  Verifies that provenance credentials can be attached to asset versions, retrieved,
+  and verified — and that adding provenance does not create new asset revisions.
+
+  Background:
+    Given CAT Keycloak is up
+      And saved Keycloak token
+      And Federated Catalogue Server is up
+      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  Scenario: Attach provenance credentials to versioned asset, retrieve and verify them
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When update saved asset with fixture "valid/version-control/gaiax-participant-v2.vp.jsonld"
+    Then get http 200:Success code
+    When get saved asset versions
+    Then get http 200:Success code
+     And save asset version count and latest version ordinal
+    When add provenance credential for saved asset at version 1 with predicate "prov:wasGeneratedBy"
+    Then get http 201:Created code
+     And save provenance credential id from last response
+    When add provenance credential for saved asset at version 2 with predicate "prov:wasRevisionOf"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 2 provenance credentials
+    When list provenance credentials for saved asset at version 1
+    Then response contains saved provenance credential
+    When get saved provenance credential
+    Then get http 200:Success code
+    When verify saved provenance credential
+    Then provenance verification result is valid
+    When verify all provenance credentials for saved asset
+    Then all provenance verification results are valid
+    When get saved asset versions
+    Then total version count is unchanged
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  Scenario: Adding a provenance credential does not create a new asset version
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When get saved asset versions
+    Then get http 200:Success code
+     And save asset version count and latest version ordinal
+    When add provenance credential for saved asset at saved version with predicate "prov:wasGeneratedBy"
+    Then get http 201:Created code
+    When get saved asset versions
+    Then get http 200:Success code
+     And total version count is unchanged
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded

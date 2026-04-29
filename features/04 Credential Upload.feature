@@ -20,12 +20,13 @@ Feature: Credential Upload
 
   @smoke @req.CAT-FR-CO-01
   Scenario: Invalid credential still rejected without compliance checks
-    # Structural validation remains active regardless of Gaia-X config.
+    # client_error (400): no-triples check fires before compliance/schema/signature steps.
     When verify credential
       """
       { "invalid": "payload" }
       """
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+    And response body contains "no triples"
 
   @req.CAT-FR-CO-01
   Scenario: Existing Gaia-X credential still passes verification
@@ -39,8 +40,8 @@ Feature: Credential Upload
 
   @regression @cfg.strict
   Scenario: Upload rejects non-JWT credential with LD proof error
-    # VC 2.0 JSON-LD without JWT envelope — server rejects with LD proof not supported.
-    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    # LD-proof VP (Ed25519Signature2020) — LD proof verification is not supported (CAT-TECH-01).
+    When add credential from fixture "valid/ld-proof/participant-vp.ld-proof.jsonld"
     Then get http 422:Unprocessable Entity code
 
   @regression @cfg.strict @cfg.test-sig

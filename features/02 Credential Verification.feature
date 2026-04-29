@@ -25,11 +25,13 @@ Feature: Credential Verification
 
   @smoke
   Scenario: Verify an invalid credential returns error
+    # No RDF triples extractable → client_error before any verification step runs.
     When verify credential
       """
       { "invalid": "payload" }
       """
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+    And response body contains "no triples"
 
   # --- Strict config: schema validation + Gaia-X enabled (regression) ---
 
@@ -41,11 +43,14 @@ Feature: Credential Verification
 
   @regression @cfg.strict
   Scenario: Invalid payload rejected with schema validation enabled
+    # client_error (400), not verification_error (422): the no-triples check fires before
+    # schema validation — config flags do not affect this rejection path.
     When verify credential
       """
       { "invalid": "payload" }
       """
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+    And response body contains "no triples"
 
   @smoke @regression @cfg.strict
   Scenario: Verification passes with Gaia-X enabled but no compliance VC

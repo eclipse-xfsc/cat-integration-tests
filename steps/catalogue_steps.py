@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import requests
 import urllib.parse
 import xml.etree.ElementTree as ET
