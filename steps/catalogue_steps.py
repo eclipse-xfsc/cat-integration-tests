@@ -83,6 +83,7 @@ def save_asset_id_from_last_response(context: ContextType) -> None:
     asset_id = response_json.get("id")
     assert asset_id, f"Last response does not contain an 'id' field: {response_json}"
     context.last_asset_id = asset_id
+    context.last_asset_hash = response_json.get("assetHash")
 
 
 @when('update saved asset with fixture "{fixture_path}"')
@@ -90,6 +91,8 @@ def update_saved_asset_from_fixture(context: ContextType, fixture_path: str) -> 
     assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
     payload = (FIXTURES_DIR / fixture_path).read_text()
     context.requests_response = context.fc_server.update_asset(context.last_asset_id, payload)
+    if context.requests_response.ok:
+        context.last_asset_hash = context.requests_response.json().get("assetHash")
 
 
 @when('get saved asset')
@@ -134,6 +137,12 @@ def get_asset_by_id_from_response(context: ContextType) -> None:
 @when('delete asset "{asset_hash}"')
 def delete_asset(context: ContextType, asset_hash: str) -> None:
     context.requests_response = context.fc_server.delete_asset(asset_hash)
+
+
+@when('delete saved asset')
+def delete_saved_asset(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_hash"), "No saved asset hash — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.delete_asset(context.last_asset_hash)
 
 
 @when('revoke asset "{asset_hash}"')
