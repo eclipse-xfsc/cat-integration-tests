@@ -371,3 +371,38 @@ class Server(BaseServiceKeycloak):
             url=f"{self.host}validations/{validation_id}",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
+
+    # -- Validation --
+
+    def validate_asset(
+        self,
+        asset_id: str,
+        schema_ids: Optional[list[str]] = None,
+        validate_against_all_schemas: Optional[bool] = None,
+    ) -> requests.Response:
+        """POST /assets/validate (single-asset — delegates to unified endpoint)"""
+        return self.validate_assets(
+            asset_ids=[asset_id],
+            schema_ids=schema_ids,
+            validate_against_all_schemas=validate_against_all_schemas,
+        )
+
+    def validate_assets(
+        self,
+        asset_ids: list[str],
+        schema_ids: Optional[list[str]] = None,
+        validate_against_all_schemas: Optional[bool] = None,
+    ) -> requests.Response:
+        """POST /assets/validate"""
+        self._update_header(content_type="application/json")
+        body: dict[str, Any] = {"assetIds": asset_ids}
+        if schema_ids is not None:
+            body["schemaIds"] = schema_ids
+        if validate_against_all_schemas is not None:
+            body["validateAgainstAllSchemas"] = validate_against_all_schemas
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}/validate",
+            json=body,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+

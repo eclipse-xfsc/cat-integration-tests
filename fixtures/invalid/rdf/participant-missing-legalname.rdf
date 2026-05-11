@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:gax-core="https://w3id.org/gaia-x/core#">
+  <gax-core:Participant rdf:about="https://example.com/test-participant-missing-legalname"/>
+</rdf:RDF>

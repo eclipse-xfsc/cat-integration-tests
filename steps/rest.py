@@ -16,6 +16,19 @@ def _400(context: ContextType) -> None:
         (status_code, context.requests_response.content)
 
 
+@then("get http 401:Unauthorized code")
+def _401(context: ContextType) -> None:
+    status_code = context.requests_response.status_code
+    assert status_code == 401, \
+        (status_code, context.requests_response.content)
+
+
+@then("get http 403:Forbidden code")
+def _403(context: ContextType) -> None:
+    status_code = context.requests_response.status_code
+    assert status_code == 403, \
+        (status_code, context.requests_response.content)
+
 
 @then("get http 404:Not Found code")
 def _404(context: ContextType) -> None:

@@ -10,6 +10,8 @@ from eu.xfsc.bdd.cat.components.fc_server import Server
 
 GAIAX_TRUST_FRAMEWORK_ID = "gaia-x"
 SHACL_MODULE_TYPE = "SHACL"
+JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
+XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
 
 
 class ContextType:
@@ -40,6 +42,34 @@ def reenable_shacl_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(SHACL_MODULE_TYPE, enabled=True)
     assert resp.status_code == 200, \
         f"Failed to re-enable SHACL module: {resp.status_code} {resp.text}"
+
+
+@given("JSON Schema module is disabled")
+def disable_json_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable JSON_SCHEMA module: {resp.status_code} {resp.text}"
+
+
+@then("JSON Schema module is re-enabled")
+def reenable_json_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to re-enable JSON_SCHEMA module: {resp.status_code} {resp.text}"
+
+
+@given("XML Schema module is disabled")
+def disable_xml_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable XML_SCHEMA module: {resp.status_code} {resp.text}"
+
+
+@then("XML Schema module is re-enabled")
+def reenable_xml_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to re-enable XML_SCHEMA module: {resp.status_code} {resp.text}"
 
 
 # ---------------------------------------------------------------------------

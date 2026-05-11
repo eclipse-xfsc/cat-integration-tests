@@ -527,3 +527,158 @@ def request_list_participants(context: ContextType) -> None:
 @when("request current session")
 def request_current_session(context: ContextType) -> None:
     context.requests_response = context.fc_server.get_session()
+
+
+# -- Validation --
+
+@then('save schema id from last response')
+def save_schema_id_from_last_response(context: ContextType) -> None:
+    response_json = context.requests_response.json()
+    schema_id = response_json.get("id")
+    assert schema_id, f"Last response does not contain an 'id' field: {response_json}"
+    context.last_schema_id = schema_id
+
+
+@then('save asset id from last response as "{var_name}"')
+def save_asset_id_as_named(context: ContextType, var_name: str) -> None:
+    response_json = context.requests_response.json()
+    asset_id = response_json.get("id")
+    assert asset_id, f"Last response does not contain an 'id' field: {response_json}"
+    if not hasattr(context, "last_asset_ids"):
+        context.last_asset_ids = []
+    context.last_asset_ids.append(asset_id)
+    setattr(context, var_name, asset_id)
+
+
+@when('validate saved asset against schema by saved id')
+def validate_saved_asset_against_saved_schema(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id"
+    assert hasattr(context, "last_schema_id"), "No saved schema id"
+    context.requests_response = context.fc_server.validate_asset(
+        context.last_asset_id, schema_ids=[context.last_schema_id]
+    )
+
+
+@when('validate saved asset against schema "{schema_id}"')
+def validate_saved_asset_against_schema(context: ContextType, schema_id: str) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id"
+    context.requests_response = context.fc_server.validate_asset(
+        context.last_asset_id, schema_ids=[schema_id]
+    )
+
+
+@when('validate saved asset against all schemas')
+def validate_saved_asset_against_all_schemas(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id"
+    context.requests_response = context.fc_server.validate_asset(
+        context.last_asset_id, validate_against_all_schemas=True
+    )
+
+
+@when('validate saved asset with no schema')
+def validate_saved_asset_with_no_schema(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id"
+    context.requests_response = context.fc_server.validate_asset(context.last_asset_id)
+
+
+@when('validate saved assets against all schemas')
+def validate_saved_assets_against_all_schemas(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_ids"), \
+        "No saved asset ids — use 'save asset id from last response as'"
+    context.requests_response = context.fc_server.validate_assets(
+        context.last_asset_ids, validate_against_all_schemas=True
+    )
+
+
+@when('validate empty asset list against all schemas')
+def validate_empty_asset_list(context: ContextType) -> None:
+    context.requests_response = context.fc_server.validate_assets(
+        [], validate_against_all_schemas=True
+    )
+
+
+@when('validate {count:d} dummy assets against all schemas')
+def validate_dummy_assets(context: ContextType, count: int) -> None:
+    dummy_ids = [f"urn:dummy-asset-{i}" for i in range(count)]
+    context.requests_response = context.fc_server.validate_assets(
+        dummy_ids, validate_against_all_schemas=True
+    )
+
+
+@when('validate 1 dummy asset against all schemas')
+def validate_one_dummy_asset(context: ContextType) -> None:
+    context.requests_response = context.fc_server.validate_assets(
+        ["urn:dummy-auth-test"], validate_against_all_schemas=True
+    )
+
+
+@then('response conforms to schema')
+def response_conforms(context: ContextType) -> None:
+    body = context.requests_response.json()
+    assert body.get("conforms") is True, f"Expected conforms=true, got: {body}"
+
+
+@then('response does not conform to schema')
+def response_not_conforms(context: ContextType) -> None:
+    body = context.requests_response.json()
+    assert body.get("conforms") is False, f"Expected conforms=false, got: {body}"
+
+
+@then('response has at least {count:d} violation')
+@then('response has at least {count:d} violations')
+def response_has_violations(context: ContextType, count: int) -> None:
+    body = context.requests_response.json()
+    report = body.get("report", {})
+    violations = report.get("violations", [])
+    assert len(violations) >= count, \
+        f"Expected >= {count} violations, got {len(violations)}: {violations}"
+
+
+@then('response report contains raw SHACL report')
+def response_has_raw_report(context: ContextType) -> None:
+    body = context.requests_response.json()
+    report = body.get("report", {})
+    raw = report.get("rawReport")
+    assert raw and len(raw) > 0, f"Expected rawReport in response, got: {body}"
+
+
+@then('response has a validation result id')
+def response_has_validation_result_id(context: ContextType) -> None:
+    body = context.requests_response.json()
+    result_ids = body.get("validationResultIds")
+    assert result_ids, f"Expected validationResultIds in response, got: {body}"
+    context.last_validation_result_id = result_ids[0]
+
+
+@when('get validation result by saved id')
+def get_validation_result_by_saved_id(context: ContextType) -> None:
+    assert hasattr(context, "last_validation_result_id"), "No saved validation result id"
+    context.requests_response = context.fc_server.get_validation_result(
+        context.last_validation_result_id
+    )
+
+
+@when('get validation results for saved asset')
+def get_validation_results_for_saved_asset(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id"
+    context.requests_response = context.fc_server.get_asset_validations(
+        context.last_asset_id
+    )
+
+
+@then('response validation results list is not empty')
+def response_validation_results_not_empty(context: ContextType) -> None:
+    body = context.requests_response.json()
+    items = body if isinstance(body, list) else body.get("items", body.get("results", []))
+    assert len(items) > 0, f"Expected non-empty validation results, got: {body}"
+
+
+# -- Auth helpers --
+
+@given('no auth token')
+def clear_auth_token(context: ContextType) -> None:
+    # Spring Security routes anonymous (no-token) access to AccessDeniedHandler → 403, not 401.
+    # This is a server-side misconfiguration (AuthenticationEntryPoint not wired for anonymous users).
+    # Tests expecting 403 document the actual behavior; fix requires server-side Spring Security change.
+    context.fc_server.http.headers.pop("Authorization", None)
+    context.fc_server.keycloak.last_token = ""

@@ -13,8 +13,8 @@ Feature: Validation Result Storage — Retrieval API
   Scenario: Get validation results for asset with no stored validations — returns empty list
     # Verify that requesting validations for an existing asset with no validation history
     # returns 200 with an empty list (not 404).
-    Given credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
-    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Given credential from fixture "loire/valid/participant.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant.loire.signed.jwt"
     Then get http 201:Created code
       And save asset id from last response
     When get validations for saved asset
@@ -32,8 +32,8 @@ Feature: Validation Result Storage — Retrieval API
 
   @smoke
   Scenario: Pagination parameters are respected for asset validations endpoint
-    Given asset from fixture "valid/rdf/simple.jsonld" is not uploaded
-    When add asset from fixture "valid/rdf/simple.jsonld" with content-type "application/ld+json"
+    Given credential from fixture "loire/valid/participant.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant.loire.signed.jwt"
     Then get http 201:Created code
       And save asset id from last response
     When get validations for saved asset with offset 0 and limit 10

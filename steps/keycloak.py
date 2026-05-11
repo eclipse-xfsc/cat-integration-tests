@@ -38,3 +38,15 @@ def save(context: ContextType) -> None:
 @given("saved Keycloak token")
 def load(context: ContextType) -> None:
     context.keycloak.last_token = context.FileToken.load()
+
+
+@given('Keycloak token for user "{username}" with password "{password}"')
+def keycloak_token_for_user(context: ContextType, username: str, password: str) -> None:
+    """Fetch a fresh token for a specific Keycloak user (e.g. role-restricted users from realm JSON).
+
+    Overwrites the in-memory token only — the file-cached token is preserved so the next
+    scenario reverts to the default user via 'saved Keycloak token'.
+    """
+    context.keycloak.username = username
+    context.keycloak.password = password
+    context.keycloak.last_token = context.keycloak.fetch_token()

@@ -9,10 +9,6 @@ Feature: Admin API — Runtime Configuration
       And saved Keycloak token
       And Federated Catalogue Server is up
 
-  # ---------------------------------------------------------------------------
-  # Schema Validation Toggle
-  # ---------------------------------------------------------------------------
-
   @baseline @cfg.default
   Scenario: SHACL module disabled via admin API — violating credential accepted
     # Disable SHACL via admin API; a credential that violates a stored shape must still upload.
@@ -32,10 +28,6 @@ Feature: Admin API — Runtime Configuration
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
       And uploaded schemas are cleaned up
-
-  # ---------------------------------------------------------------------------
-  # Gaia-X Trust Framework Toggle
-  # ---------------------------------------------------------------------------
 
   @smoke @cfg.default
   Scenario: Gaia-X trust framework disabled — compliance check skipped
@@ -60,10 +52,6 @@ Feature: Admin API — Runtime Configuration
     Given Gaia-X trust framework is enabled
     When add credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
-
-  # ---------------------------------------------------------------------------
-  # Admin Stats
-  # ---------------------------------------------------------------------------
 
   @smoke @cfg.default
   Scenario: Admin stats endpoint returns all expected fields
