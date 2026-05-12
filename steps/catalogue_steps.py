@@ -493,6 +493,97 @@ def add_asset_raw_binary(context: ContextType, fixture_path: str) -> None:
     )
 
 
+def _render_enrichment_payload(fixture_path: str, asset_id: str) -> str:
+    template = (FIXTURES_DIR / fixture_path).read_text()
+    return template.replace("{asset_id}", asset_id)
+
+
+@when('enrich saved asset with fixture "{fixture_path}"')
+def enrich_saved_asset(context: ContextType, fixture_path: str) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    payload = _render_enrichment_payload(fixture_path, context.last_asset_id)
+    context.requests_response = context.fc_server.add_asset_with_content_type(
+        payload, "application/ld+json"
+    )
+
+
+@when('enrich saved human-readable asset with fixture "{fixture_path}"')
+def enrich_saved_human_readable(context: ContextType, fixture_path: str) -> None:
+    assert hasattr(context, "last_hr_id"), "No saved human-readable id — call 'save human-readable id from last response' first"
+    payload = _render_enrichment_payload(fixture_path, context.last_hr_id)
+    context.requests_response = context.fc_server.add_asset_with_content_type(
+        payload, "application/ld+json"
+    )
+
+
+@then('save file size from last response')
+def save_file_size_from_last_response(context: ContextType) -> None:
+    body = context.requests_response.json()
+    file_size = body.get("fileSize")
+    assert file_size is not None, f"Response missing fileSize field: {body}"
+    context.last_file_size = file_size
+
+
+@then('response file size matches saved file size')
+def response_file_size_matches_saved(context: ContextType) -> None:
+    assert hasattr(context, "last_file_size"), "No saved file size — call 'save file size from last response' first"
+    body = context.requests_response.json()
+    actual = body.get("fileSize")
+    assert actual == context.last_file_size, \
+        f"Expected fileSize {context.last_file_size}, got {actual}"
+
+
+@then('response triplesAdded is {expected:d}')
+def response_triples_added_is(context: ContextType, expected: int) -> None:
+    body = context.requests_response.json()
+    actual = body.get("triplesAdded")
+    assert actual == expected, f"Expected triplesAdded={expected}, got {actual} in {body}"
+
+
+@then('response triplesAdded is at least {expected:d}')
+def response_triples_added_at_least(context: ContextType, expected: int) -> None:
+    body = context.requests_response.json()
+    actual = body.get("triplesAdded")
+    assert actual is not None and actual >= expected, \
+        f"Expected triplesAdded>={expected}, got {actual} in {body}"
+
+
+@then('response triplesRejected is {expected:d}')
+def response_triples_rejected_is(context: ContextType, expected: int) -> None:
+    body = context.requests_response.json()
+    actual = body.get("triplesRejected")
+    assert actual == expected, f"Expected triplesRejected={expected}, got {actual} in {body}"
+
+
+@then('response assetId matches saved asset id')
+def response_asset_id_matches_saved(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    body = context.requests_response.json()
+    actual = body.get("assetId")
+    assert actual == context.last_asset_id, \
+        f"Expected assetId '{context.last_asset_id}', got '{actual}' in {body}"
+
+
+@then('query result contains saved asset id')
+def query_result_contains_saved_asset_id(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    body = context.requests_response.json()
+    items = body.get("items", [])
+    flat = str(items)
+    assert context.last_asset_id in flat, \
+        f"Expected saved asset id '{context.last_asset_id}' in query results, got: {items}"
+
+
+@then('query result does not contain saved asset id')
+def query_result_does_not_contain_saved_asset_id(context: ContextType) -> None:
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    body = context.requests_response.json()
+    items = body.get("items", [])
+    flat = str(items)
+    assert context.last_asset_id not in flat, \
+        f"Expected saved asset id '{context.last_asset_id}' NOT in query results, got: {items}"
+
+
 @then('response content-type is "{expected_type}"')
 def response_content_type_is(context: ContextType, expected_type: str) -> None:
     body = context.requests_response.json()

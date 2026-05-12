@@ -29,6 +29,8 @@ Feature: Non-Credential RDF Graph Extraction
     When add asset from fixture "valid/rdf/simple.rdf" with content-type "application/rdf+xml"
     Then get http 201:Created code
 
+  # TODO: remove @wip when OpenCypher queries are supported on the deployed graph backend (Fuseki uses SPARQL, not OpenCypher).
+  @wip
   Scenario: Non-credential JSON-LD triple is queryable in the graph via openCypher
     Given asset from fixture "valid/rdf/simple.jsonld" is not uploaded
     When add asset from fixture "valid/rdf/simple.jsonld" with content-type "application/ld+json"

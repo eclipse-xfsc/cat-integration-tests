@@ -90,6 +90,13 @@ def enable_gaiax_trust_framework(context: ContextType) -> None:
         f"Failed to enable Gaia-X trust framework: {resp.status_code} {resp.text}"
 
 
+@then("Gaia-X trust framework is disabled")
+def disable_gaiax_trust_framework_cleanup(context: ContextType) -> None:
+    resp = context.fc_server.set_trust_framework_enabled(GAIAX_TRUST_FRAMEWORK_ID, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable Gaia-X trust framework: {resp.status_code} {resp.text}"
+
+
 # ---------------------------------------------------------------------------
 # Admin Stats
 # ---------------------------------------------------------------------------

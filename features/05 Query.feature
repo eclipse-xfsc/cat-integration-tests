@@ -23,8 +23,9 @@ Feature: Query
     Then get http 200:Success code
       And query result contains "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd"
 
-  @smoke @cfg.strict @cfg.test-sig
+  @smoke @cfg.strict @cfg.test-sig @wip
   Scenario: Query uploaded credential by credential subject
+    # TODO: remove @wip when OpenCypher queries are supported on the deployed graph backend (Fuseki uses SPARQL, not OpenCypher).
     # Strict profile: full verification chain. Loire JWT fixture required.
     Given credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
     When add credential from fixture "loire/valid/participant-vp.loire.signed.jwt" with content-type "application/vp+jwt"

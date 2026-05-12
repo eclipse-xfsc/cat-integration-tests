@@ -44,6 +44,7 @@ Feature: Admin API — Runtime Configuration
     When add credential from fixture "loire/valid/participant-vp.loire.signed.jwt" with content-type "application/vp+jwt"
     Then get http 201:Created code
       And credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
+      And Gaia-X trust framework is disabled
 
   @baseline @cfg.strict
   Scenario: Gaia-X trust framework enabled — credential with unrecognized type rejected
@@ -52,6 +53,7 @@ Feature: Admin API — Runtime Configuration
     Given Gaia-X trust framework is enabled
     When add credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.jsonld"
     Then get http 422:Unprocessable Entity code
+      And Gaia-X trust framework is disabled
 
   @smoke @cfg.default
   Scenario: Admin stats endpoint returns all expected fields

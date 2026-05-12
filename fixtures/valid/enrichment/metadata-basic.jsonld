@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "dct": "http://purl.org/dc/terms/",
+    "ex": "http://example.org/"
+  },
+  "@id": "{asset_id}",
+  "@type": "ex:ContractTemplate",
+  "dct:title": "Standard Service Agreement",
+  "ex:category": "service-contracts"
+}
