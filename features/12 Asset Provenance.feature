@@ -50,3 +50,17 @@ Feature: Asset Provenance and Versioning
     Then get http 200:Success code
      And total version count is unchanged
      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  Scenario: Deleting an asset cascades delete of its provenance credentials
+    # AssetDeletedEvent → ProvenanceCleanupListener removes provenance_credentials rows.
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add provenance credential for saved asset at version 1 with predicate "prov:wasGeneratedBy"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 1 provenance credentials
+    When delete saved asset
+    Then get http 200:Success code
+    When list provenance credentials for saved asset
+    Then get http 404:Not Found code
