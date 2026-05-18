@@ -23,6 +23,7 @@ CONTENT_TYPE_MAP = {
     ".jsonld": "application/ld+json",
     ".json": "application/json",
     ".rdf": "application/rdf+xml",
+    ".jwt": "application/vc+jwt",
 }
 
 @given("Federated Catalogue Server is up")
@@ -39,8 +40,10 @@ use_step_matcher("re")
 # behave could not match this step correctly and reported a duplicatestep definition, we fix it with a regex
 @when(r'add credential from fixture "(?P<fixture_path>[^"]+)"')
 def add_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
-    payload = (FIXTURES_DIR / fixture_path).read_text()
-    context.requests_response = context.fc_server.add_asset(payload)
+    path = FIXTURES_DIR / fixture_path
+    payload = path.read_text()
+    content_type = CONTENT_TYPE_MAP.get(path.suffix, "application/json")
+    context.requests_response = context.fc_server.add_asset_with_content_type(payload, content_type)
 
 @when(r'verify credential from fixture "(?P<fixture_path>[^"]+)"')
 def verify_credential_from_fixture(context: ContextType, fixture_path: str) -> None:
