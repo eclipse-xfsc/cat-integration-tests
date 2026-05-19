@@ -52,6 +52,8 @@ case ${CAT_ENV} in
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="admin"
     export CAT_TEST_PASSWORD="admin"
+    # WireMock for @uses.compliance-mock scenarios (see docker-compose stack)
+    export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
 
   minikube)
@@ -65,6 +67,7 @@ case ${CAT_ENV} in
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="admin"
     export CAT_TEST_PASSWORD="admin"
+    export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
 
   qa)
@@ -78,6 +81,7 @@ case ${CAT_ENV} in
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="qa-test-user"
     export CAT_TEST_PASSWORD="qa-test-password"
+    export CAT_WIREMOCK_HOST="https://wiremock.qa.example.org"
     ;;
 
   *)

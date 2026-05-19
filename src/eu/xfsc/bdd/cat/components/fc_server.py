@@ -372,6 +372,38 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    # -- Compliance Checks (CO-05) --
+
+    def run_compliance_check(
+            self, asset_id: str, framework_profile_id: str, credential: str
+    ) -> requests.Response:
+        """POST /assets/{id}/compliance-check"""
+        self._update_header(content_type="application/json")
+        return self.http.post(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/compliance-check",
+            json={"frameworkProfileId": framework_profile_id, "credential": credential},
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def get_compliance_checks(
+            self, asset_id: str, params: Optional[dict[str, Any]] = None
+    ) -> requests.Response:
+        """GET /assets/{id}/compliance-checks[?offset=X&limit=Y]"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}{self.ASSET_PATH}/{quote(asset_id, safe='')}/compliance-checks",
+            params=params,
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
+    def get_trust_frameworks(self) -> requests.Response:
+        """GET /trust-frameworks"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}trust-frameworks",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
     # -- Validation --
 
     def validate_asset(
