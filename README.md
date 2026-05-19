@@ -167,6 +167,40 @@ behave --tags="@cfg.fuseki"
 behave --tags="@smoke and not @cfg.fuseki and not @cfg.gaiax"
 ```
 
+### Tag-gated scenarios: `@uses.*`
+
+Scenarios tagged `@uses.*` require external infrastructure and are **excluded from default CI runs**.
+They must be triggered explicitly by tag.
+
+| Tag                     | What it requires                                                                                                                                                                            |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@uses.compliance-mock` | WireMock instance at `CAT_WIREMOCK_HOST`; FC server's `mock-2026.service_url` pointing at it                                                                                                |
+| `@uses.live-gxdch`      | Live internet access to `https://compliance.gaia-x.eu/v2`; `gaia-x` trust framework family enabled; QA signing key with publicly resolvable x5u trusted by the Gaia-X Trust Anchor registry |
+
+#### Running `@uses.live-gxdch` scenarios
+
+```bash
+# Prerequisites:
+#   1. CAT_ENV=qa (or another non-local target with internet access)
+#   2. gaia-x trust framework enabled on the target stage:
+#        curl -X PATCH $CAT_FC_HOST/admin/trust-frameworks/gaia-x -d '{"enabled":true}'
+#        or env FEDERATED_CATALOGUE_ENABLED_TRUST_FRAMEWORKS=gaia-x
+#   3. FC server configured with a signing key whose x5u certificate chain is
+#      publicly reachable and trusted by the real Gaia-X Trust Anchor registry
+#      (https://registry.lab.gaia-x.eu/v1/api/trustAnchor/chain/file).
+#      A local self-signed CA (docker-compose did-server) is NOT sufficient.
+#   4. Fixtures updated to use a real participant VP JWT signed with the QA key.
+#      See fixtures/loire/valid/participant-vp.loire.signed.jwt — replace with
+#      a fixture signed by the real participant key for conforms=true assertions.
+
+source env.sh
+behave --tags=uses.live-gxdch features/compliance/gaia-x-live-dch.feature
+```
+
+These scenarios are **not runnable locally** without the QA k8s stage infrastructure
+(real signing cert + publicly resolvable x5u). They are intended for integration
+validation against the deployed QA environment.
+
 ### Acceptance Gates
 
 | Tag | Gate | SRS Requirements |
