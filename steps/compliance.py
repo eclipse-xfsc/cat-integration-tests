@@ -142,24 +142,18 @@ def compliance_sparql_result_has_credential_valid_until(context: ContextType) ->
     items = body.get("items", [])
     assert len(items) > 0, \
         f"SPARQL query returned no results — expected a fcmeta:ComplianceCheck node: {body}"
-    flat = str(items)
-    assert "validUntil" in flat or "credentialValidUntil" in flat or len(items) > 0, \
-        f"Expected credentialValidUntil in SPARQL result items, got: {items}"
-    # Confirm the validUntil binding is not null/empty for at least one row
+    # Confirm the validUntil binding is present and non-empty for at least one row
     for row in items:
-        valid_until = None
         if isinstance(row, dict):
             # SPARQL result bindings may be nested or flat depending on the graph backend
             for key in row:
-                if "validuntil" in key.lower() or "validUntil" in key:
-                    valid_until = row[key]
-                    break
-        if valid_until:
-            return
-    # If the binding structure is opaque, accept any non-empty result list as success
-    # (the SPARQL query itself filters for fcmeta:credentialValidUntil bound)
-    assert len(items) > 0, \
-        f"SPARQL result returned rows but no credentialValidUntil binding found: {items}"
+                if "validuntil" in key.lower():
+                    if row[key]:
+                        return
+    raise AssertionError(
+        f"SPARQL result returned rows but no non-empty validUntil / credentialValidUntil "
+        f"binding found: {items}"
+    )
 
 
 # ---------------------------------------------------------------------------

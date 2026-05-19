@@ -172,10 +172,10 @@ behave --tags="@smoke and not @cfg.fuseki and not @cfg.gaiax"
 Scenarios tagged `@uses.*` require external infrastructure and are **excluded from default CI runs**.
 They must be triggered explicitly by tag.
 
-| Tag                     | What it requires                                                                                                                                                                            |
-|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@uses.compliance-mock` | WireMock instance at `CAT_WIREMOCK_HOST`; FC server's `mock-2026.service_url` pointing at it                                                                                                |
-| `@uses.live-gxdch`      | Live internet access to `https://compliance.gaia-x.eu/v2`; `gaia-x` trust framework family enabled; QA signing key with publicly resolvable x5u trusted by the Gaia-X Trust Anchor registry |
+| Tag                     | What it requires                                                                                                                                                                                     |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@uses.compliance-mock` | WireMock instance at `CAT_WIREMOCK_HOST`; FC server's `mock-2026.service_url` pointing at it                                                                                                         |
+| `@uses.live-gxdch`      | Live internet access to `https://compliance.gaia-x.eu/v2`; `gaia-x` trust framework family enabled; participant VP fixture signed by a key whose `x5u` resolves to a GXDCH-trusted certificate chain |
 
 #### Running `@uses.live-gxdch` scenarios
 
@@ -185,11 +185,11 @@ They must be triggered explicitly by tag.
 #   2. gaia-x trust framework enabled on the target stage:
 #        curl -X PATCH $CAT_FC_HOST/admin/trust-frameworks/gaia-x -d '{"enabled":true}'
 #        or env FEDERATED_CATALOGUE_ENABLED_TRUST_FRAMEWORKS=gaia-x
-#   3. FC server configured with a signing key whose x5u certificate chain is
-#      publicly reachable and trusted by the real Gaia-X Trust Anchor registry
-#      (https://registry.lab.gaia-x.eu/v1/api/trustAnchor/chain/file).
-#      A local self-signed CA (docker-compose did-server) is NOT sufficient.
-#   4. Fixtures updated to use a real participant VP JWT signed with the QA key.
+#   3. The participant VP fixture must be signed by a key whose x5u resolves to a
+#      public certificate chain trusted by the Gaia-X Trust Anchor registry
+#      (https://registry.lab.gaia-x.eu/v1/api/trustAnchor/chain/file). The live
+#      DCH validates the *inbound* VP's signing key — a local self-signed CA
+#      (docker-compose did-server) is NOT sufficient for this check.
 #      See fixtures/loire/valid/participant-vp.loire.signed.jwt — replace with
 #      a fixture signed by the real participant key for conforms=true assertions.
 
