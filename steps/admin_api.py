@@ -9,10 +9,15 @@ from behave import given, then, when
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
 GAIAX_TRUST_FRAMEWORK_ID = "gaia-x"
+GAIAX_BUNDLE_ID = "gaia-x-2511"
 MOCK_TRUST_FRAMEWORK_ID = "mock"
 SHACL_MODULE_TYPE = "SHACL"
 JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
+
+ROLE_SERVICE_OFFERING = "ServiceOffering"
+ROLE_PARTICIPANT = "Participant"
+ROLE_RESOURCE = "Resource"
 
 
 class ContextType:
@@ -136,3 +141,51 @@ def response_has_admin_stats_fields(context: ContextType) -> None:
     }
     missing = expected_fields - body.keys()
     assert not missing, f"Admin stats response missing fields: {missing}. Got: {list(body.keys())}"
+
+
+# ---------------------------------------------------------------------------
+# Trust Framework Role Toggle (CAT-FR-AU-01 Story 048)
+# ---------------------------------------------------------------------------
+
+@given('role {role_name} of bundle {bundle_id} is disabled')
+def disable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+
+
+@then('role {role_name} of bundle {bundle_id} is re-enabled')
+def reenable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to re-enable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+
+
+@when("request admin trust frameworks")
+def request_admin_trust_frameworks(context: ContextType) -> None:
+    """GET /admin/trust-frameworks"""
+    context.requests_response = context.fc_server.get_admin_trust_frameworks()
+
+
+@then('admin trust frameworks response includes bundle "{bundle_id}" with role "{role_name}" enabled')
+def admin_trust_frameworks_bundle_role_enabled(
+    context: ContextType, bundle_id: str, role_name: str
+) -> None:
+    body = context.requests_response.json()
+    assert isinstance(body, list), f"Expected list, got {type(body).__name__}: {body}"
+    # Find any family entry that contains a bundle with the given id
+    bundle = None
+    for family in body:
+        for b in family.get("bundles", []):
+            if b.get("id") == bundle_id:
+                bundle = b
+                break
+        if bundle:
+            break
+    assert bundle is not None, \
+        f"Bundle '{bundle_id}' not found in admin trust-frameworks response: {body}"
+    roles = bundle.get("roles", {})
+    assert role_name in roles, \
+        f"Role '{role_name}' not found in bundle '{bundle_id}' roles: {roles}"
+    assert roles[role_name] is True, \
+        f"Expected role '{bundle_id}/{role_name}' to be enabled (true), got: {roles[role_name]}"

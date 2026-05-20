@@ -351,6 +351,25 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def set_trust_framework_role_enabled(
+        self, bundle_id: str, role_name: str, enabled: bool
+    ) -> requests.Response:
+        """PUT /admin/trust-frameworks/{bundleId}/roles/{roleName}/enabled?enabled=<bool>"""
+        self._update_header(content_type=None)
+        return self.http.put(
+            url=f"{self.host}admin/trust-frameworks/{bundle_id}/roles/{role_name}/enabled",
+            params={"enabled": str(enabled).lower()},
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def get_admin_trust_frameworks(self) -> requests.Response:
+        """GET /admin/trust-frameworks"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/trust-frameworks",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     # -- Validation Results (CO-02) --
 
     def get_asset_validations(

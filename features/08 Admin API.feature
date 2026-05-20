@@ -60,3 +60,77 @@ Feature: Admin API — Runtime Configuration
     When request admin stats
     Then get http 200:Success code
       And response has admin stats fields
+
+  # ---------------------------------------------------------------------------
+  # Role Toggle — Story 048 (CAT-FR-AU-01 AC-2/AC-3)
+  #
+  # Fixture notes:
+  #   - service-offering.loire.signed.jwt  → type gx:ServiceOffering (direct role match)
+  #   - digital-service-offering.loire.signed.jwt → type gx:DigitalServiceOffering
+  #     (additional_root under ServiceOffering role in gaia-x-2511/framework.yaml)
+  #   - participant.loire.signed.jwt → type gx:LegalPerson (Participant role — must stay active)
+  #
+  # OWL-subclass scenario (Verifikation step 4) is SKIPPED:
+  #   No fixture exists for a credential whose @type is a runtime-uploaded OWL subclass of
+  #   gx:ServiceOffering. Fabricating or signing a new fixture is out of scope here
+  #   (see bdd-automation-knowledge/fixture-signing.md). Coverage is provided transitively by
+  #   CredentialVerificationStrategyOwlToggleTest in fc-service-core.
+  #
+  # Persistence-across-restart (Verifikation step 7) is OUT OF SCOPE for this BDD suite.
+  #   The JPA-backed unit tests in fc-service-core cover that guarantee transitively.
+  # ---------------------------------------------------------------------------
+
+  @baseline @cfg.strict @cfg.test-sig
+  Scenario: Role disabled — ServiceOffering credential rejected (direct match)
+    # Verifikation step 2: disable ServiceOffering role; credential with gx:ServiceOffering type → 400.
+    Given Gaia-X trust framework is enabled
+      And role ServiceOffering of bundle gaia-x-2511 is disabled
+      And credential from fixture "loire/valid/service-offering.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/service-offering.loire.signed.jwt" with content-type "application/vc+jwt"
+    Then get http 400:Bad Request code
+      And response body contains "disabled"
+      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
+
+  @baseline @cfg.strict @cfg.test-sig
+  Scenario: Role disabled — DigitalServiceOffering credential rejected (additional_root)
+    # Verifikation step 3: gx:DigitalServiceOffering is an additional_root of ServiceOffering
+    # in the gaia-x-2511 framework.yaml; disabling the role must also block this type.
+    Given Gaia-X trust framework is enabled
+      And role ServiceOffering of bundle gaia-x-2511 is disabled
+      And credential from fixture "loire/valid/digital-service-offering.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/digital-service-offering.loire.signed.jwt" with content-type "application/vc+jwt"
+    Then get http 400:Bad Request code
+      And response body contains "disabled"
+      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
+
+  @baseline @cfg.strict @cfg.test-sig
+  Scenario: Role disabled — other role (Participant) still accepted
+    # Verifikation step 5: disabling ServiceOffering must not affect the Participant role.
+    # gx:LegalPerson is the root type for the Participant role in gaia-x-2511.
+    Given Gaia-X trust framework is enabled
+      And role ServiceOffering of bundle gaia-x-2511 is disabled
+      And credential from fixture "loire/valid/participant.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant.loire.signed.jwt" with content-type "application/vc+jwt"
+    Then get http 201:Created code
+      And credential from fixture "loire/valid/participant.loire.signed.jwt" is not uploaded
+      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
+
+  @baseline @cfg.strict @cfg.test-sig
+  Scenario: Re-enable role — previously rejected credential now accepted
+    # Verifikation step 6: after re-enabling ServiceOffering, the same credential succeeds.
+    Given Gaia-X trust framework is enabled
+      And role ServiceOffering of bundle gaia-x-2511 is disabled
+      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
+      And credential from fixture "loire/valid/service-offering.loire.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/service-offering.loire.signed.jwt" with content-type "application/vc+jwt"
+    Then get http 201:Created code
+      And credential from fixture "loire/valid/service-offering.loire.signed.jwt" is not uploaded
+
+  @baseline @cfg.default
+  Scenario: GET admin trust-frameworks returns role state for gaia-x-2511
+    # Verifikation step 1 partial: GET /admin/trust-frameworks lists bundles with roles.
+    # Default state: all roles enabled (true).
+    Given Gaia-X trust framework is enabled
+    When request admin trust frameworks
+    Then get http 200:Success code
+      And admin trust frameworks response includes bundle "gaia-x-2511" with role "ServiceOffering" enabled
