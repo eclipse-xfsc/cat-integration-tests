@@ -29,6 +29,64 @@ Feature: Admin API — Runtime Configuration
     Then get http 422:Unprocessable Entity code
       And uploaded schemas are cleaned up
 
+  @baseline
+  Scenario: SHACL module disabled — on-demand validation rejected with module_disabled
+    # The on-demand validation gate fires before any asset lookup, so the rejection
+    # is observable with placeholder asset ids and is independent of the
+    # verifySchema server config.
+    Given SHACL schema module is disabled
+    When validate 2 dummy assets against all schemas
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:SHACL"
+      And SHACL schema module is re-enabled
+
+  @baseline @cfg.default
+  Scenario: SHACL module disabled — credential verification with schema check rejected
+    # The SHACL gate in CredentialVerificationStrategy fires when verifySchema=true
+    # is passed explicitly via query param, so this scenario is independent of the
+    # server's verifySchema default config.
+    Given SHACL schema module is disabled
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" with schema check skipping signatures
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:SHACL"
+      And SHACL schema module is re-enabled
+
+  @baseline @cfg.default
+  Scenario: OWL module disabled — custom-subclass credential fails role resolution with 400
+    # resolveRole skips the rdfs:subClassOf+ walk when OWL is off. With verifySemantics
+    # off (default config), the request reaches the unconditional null-role check in
+    # VerificationServiceImpl, which rejects with 400 "not resolvable". In strict
+    # config the same custom-subclass credential is rejected one layer earlier with
+    # 422 "Semantic Error" (hasClasses() = false because the role resolves to UNKNOWN).
+    # Both outcomes demonstrate the OWL toggle's effect; this scenario pins the 400
+    # contract observable in default config.
+    Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
+      And OWL schema module is disabled
+    When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
+    Then get http 400:Bad Request code
+      And response body contains "not resolvable"
+      And OWL schema module is re-enabled
+      And uploaded schemas are cleaned up
+
+  @baseline
+  Scenario: OWL module enabled — custom-subclass credential resolves via subclass walk
+    # With OWL on, the same credential's type resolves to gx:Participant through the
+    # rdfs:subClassOf+ walk in ClaimValidator.resolveViaOntology.
+    Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
+      And OWL schema module is enabled
+    When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+      And uploaded schemas are cleaned up
+
+  @baseline
+  Scenario: OWL module disabled — registry-direct type still resolves
+    # Control case: gx:LegalPerson is in the bundled Gaia-X 2511 ontology and indexed
+    # at startup (tier 1), so it resolves regardless of the OWL toggle state.
+    Given OWL schema module is disabled
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+      And OWL schema module is re-enabled
+
   @smoke @cfg.default
   Scenario: Gaia-X trust framework disabled — compliance check skipped
     # With Gaia-X disabled, verification of a credential without compliance proof passes.
@@ -60,3 +118,62 @@ Feature: Admin API — Runtime Configuration
     When request admin stats
     Then get http 200:Success code
       And response has admin stats fields
+
+  @smoke
+  Scenario: Ontology impact endpoint returns items array when no ontologies stored
+    When request ontology impact list
+    Then get http 200:Success code
+      And response items is an array
+
+  @baseline
+  Scenario: Ontology impact endpoint surfaces contributions for an uploaded ontology
+    # OntologyImpactService parses each ONTOLOGY-type row and counts the
+    # rdfs:subClassOf+ descendants under each registered role root. The custom
+    # ontology contributes one subclass (ex:MyCustomParticipant) to Participant.
+    Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
+    When request ontology impact list
+    Then get http 200:Success code
+      And response items has at least 1 entry
+      And response items contributions contain "Participant"
+      And uploaded schemas are cleaned up
+
+  @baseline
+  Scenario: Ontology impact endpoint requires authentication
+    # The /admin/schema-validation/** GET rule in SecurityConfig triggers the OAuth2
+    # AuthenticationEntryPoint for anonymous requests, yielding 401 (other admin
+    # endpoints land on AccessDeniedHandler → 403 because their rules differ).
+    Given no auth token
+    When request ontology impact list
+    Then get http 401:Unauthorized code
+
+  @baseline
+  Scenario: Set schema module enabled rejects invalid module type with valid options listed
+    # The path-variable enum on PUT /admin/schema-validation/modules/{type} rejects
+    # values outside SHACL, JSON_SCHEMA, XML_SCHEMA, OWL. The error message lists
+    # the accepted enum values so an admin client can correct the request.
+    When set schema module "INVALID" to enabled
+    Then get http 400:Bad Request code
+      And response body contains "SHACL"
+      And response body contains "JSON_SCHEMA"
+      And response body contains "XML_SCHEMA"
+      And response body contains "OWL"
+
+  @baseline @cfg.default
+  Scenario: All applicable validation modules disabled — on-demand validation rejected with 400
+    # planAllApplicable falls through with no eligible strategy when SHACL, JSON
+    # Schema, and XML Schema are all disabled. The reject is 400 ClientException
+    # (aligned from the previous 422 VerificationException; see ADR 16) and the
+    # message lists the modules an admin can enable to recover.
+    Given SHACL schema module is disabled
+      And JSON Schema module is disabled
+      And XML Schema module is disabled
+      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+      And save asset id from last response
+    When validate saved asset against all schemas
+    Then get http 400:Bad Request code
+      And response body contains "No validation module is enabled or applicable"
+      And SHACL schema module is re-enabled
+      And JSON Schema module is re-enabled
+      And XML Schema module is re-enabled
