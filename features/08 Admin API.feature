@@ -89,7 +89,6 @@ Feature: Admin API — Runtime Configuration
     When add credential from fixture "loire/valid/service-offering.loire.signed.jwt" with content-type "application/vc+jwt"
     Then get http 400:Bad Request code
       And response body contains "disabled"
-      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
 
   @baseline @cfg.strict @cfg.test-sig
   Scenario: Role disabled — DigitalServiceOffering credential rejected (additional_root)
@@ -101,7 +100,6 @@ Feature: Admin API — Runtime Configuration
     When add credential from fixture "loire/valid/digital-service-offering.loire.signed.jwt" with content-type "application/vc+jwt"
     Then get http 400:Bad Request code
       And response body contains "disabled"
-      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
 
   @baseline @cfg.strict @cfg.test-sig
   Scenario: Role disabled — other role (Participant) still accepted
@@ -113,7 +111,6 @@ Feature: Admin API — Runtime Configuration
     When add credential from fixture "loire/valid/participant.loire.signed.jwt" with content-type "application/vc+jwt"
     Then get http 201:Created code
       And credential from fixture "loire/valid/participant.loire.signed.jwt" is not uploaded
-      And role ServiceOffering of bundle gaia-x-2511 is re-enabled
 
   @baseline @cfg.strict @cfg.test-sig
   Scenario: Re-enable role — previously rejected credential now accepted

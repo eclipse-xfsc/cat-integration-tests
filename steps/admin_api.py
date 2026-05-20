@@ -152,6 +152,13 @@ def disable_trust_framework_role(context: ContextType, role_name: str, bundle_id
     resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+    # Register for automatic cleanup in after_scenario so the state is restored
+    # even when a subsequent assertion fails (cleanup-on-failure safety).
+    if not hasattr(context, "disabled_roles"):
+        context.disabled_roles = []
+    entry = (bundle_id, role_name)
+    if entry not in context.disabled_roles:
+        context.disabled_roles.append(entry)
 
 
 @then('role {role_name} of bundle {bundle_id} is re-enabled')
