@@ -9,6 +9,7 @@ from behave import given, then, when
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
 GAIAX_TRUST_FRAMEWORK_ID = "gaia-x"
+MOCK_TRUST_FRAMEWORK_ID = "mock"
 SHACL_MODULE_TYPE = "SHACL"
 JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
@@ -139,6 +140,25 @@ def disable_gaiax_trust_framework_cleanup(context: ContextType) -> None:
     resp = context.fc_server.set_trust_framework_enabled(GAIAX_TRUST_FRAMEWORK_ID, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable Gaia-X trust framework: {resp.status_code} {resp.text}"
+
+
+# ---------------------------------------------------------------------------
+# Mock Trust Framework Toggle
+# ---------------------------------------------------------------------------
+
+@given("mock trust framework is enabled")
+@then("mock trust framework is re-enabled")
+def enable_mock_trust_framework(context: ContextType) -> None:
+    resp = context.fc_server.set_trust_framework_enabled(MOCK_TRUST_FRAMEWORK_ID, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to enable mock trust framework: {resp.status_code} {resp.text}"
+
+
+@given("mock trust framework is disabled")
+def disable_mock_trust_framework(context: ContextType) -> None:
+    resp = context.fc_server.set_trust_framework_enabled(MOCK_TRUST_FRAMEWORK_ID, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable mock trust framework: {resp.status_code} {resp.text}"
 
 
 # ---------------------------------------------------------------------------
