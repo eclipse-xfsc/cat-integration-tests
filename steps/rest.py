@@ -9,6 +9,13 @@ class ContextType:
     requests_response: requests.Response
 
 
+@then("get http 202:Accepted code")
+def _202(context: ContextType) -> None:
+    status_code = context.requests_response.status_code
+    assert status_code == 202, \
+        (status_code, context.requests_response.content)
+
+
 @then("get http 400:Bad Request code")
 def _400(context: ContextType) -> None:
     status_code = context.requests_response.status_code
