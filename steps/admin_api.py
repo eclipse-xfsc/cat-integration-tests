@@ -8,17 +8,10 @@ from behave import given, then, when
 
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
-GAIAX_TRUST_FRAMEWORK_ID = "gaia-x"
-GAIAX_BUNDLE_ID = "gaia-x-2511"
 MOCK_TRUST_FRAMEWORK_ID = "mock"
 SHACL_MODULE_TYPE = "SHACL"
 JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
-
-ROLE_SERVICE_OFFERING = "ServiceOffering"
-ROLE_PARTICIPANT = "Participant"
-ROLE_RESOURCE = "Resource"
-
 
 class ContextType:
     fc_server: Server
@@ -144,7 +137,7 @@ def response_has_admin_stats_fields(context: ContextType) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Trust Framework Role Toggle (CAT-FR-AU-01 Story 048)
+# Trust Framework Role Toggle
 # ---------------------------------------------------------------------------
 
 @given('role {role_name} of bundle {bundle_id} is disabled')
