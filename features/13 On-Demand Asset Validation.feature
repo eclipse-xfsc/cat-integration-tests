@@ -272,8 +272,9 @@ Feature: On-Demand Asset Validation
     When validate 1 dummy asset against all schemas
     Then get http 403:Forbidden code
 
-  Scenario: Validate JSON asset when JSON Schema module is disabled returns 422
-    # requireModuleEnabled() throws VerificationException → 422 (server config, not a client error)
+  Scenario: Validate JSON asset when JSON Schema module is disabled returns 400
+    # Server intentionally returns 400 client_error with body {"code":"client_error","message":"module_disabled:JSON_SCHEMA"}.
+    # Documented in OpenAPI (AssetsApi 400 response) and RestExceptionHandler maps VerificationException → BAD_REQUEST.
     Given schema from fixture "schemas/person.schema.json" is uploaded as "application/schema+json"
     Then save schema id from last response
     Given asset from fixture "valid/non-rdf/person-valid.json" is not uploaded
@@ -281,11 +282,16 @@ Feature: On-Demand Asset Validation
     Then save asset id from last response
     Given JSON Schema module is disabled
     When validate saved asset against schema by saved id
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+    And requests response content match regexp
+      """
+      "code"\s*:\s*"client_error".*"message"\s*:\s*"module_disabled:JSON_SCHEMA"
+      """
       And JSON Schema module is re-enabled
       And uploaded schemas are cleaned up
 
-  Scenario: Validate XML asset when XML Schema module is disabled returns 422
+  Scenario: Validate XML asset when XML Schema module is disabled returns 400
+    # Server intentionally returns 400 client_error with body {"code":"client_error","message":"module_disabled:XML_SCHEMA"}.
     Given schema from fixture "schemas/config.xsd" is uploaded as "application/xml"
     Then save schema id from last response
     Given asset from fixture "valid/non-rdf/config-valid.xml" is not uploaded
@@ -293,7 +299,11 @@ Feature: On-Demand Asset Validation
     Then save asset id from last response
     Given XML Schema module is disabled
     When validate saved asset against schema by saved id
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+    And requests response content match regexp
+      """
+      "code"\s*:\s*"client_error".*"message"\s*:\s*"module_disabled:XML_SCHEMA"
+      """
       And XML Schema module is re-enabled
       And uploaded schemas are cleaned up
 

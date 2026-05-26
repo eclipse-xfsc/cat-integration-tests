@@ -6,10 +6,13 @@ WireMock-tagged scenarios (@uses.compliance-mock) require:
   - The FC server's mock-2026 service_url configured to the same WireMock host
 """
 import os
+from datetime import datetime
 from pathlib import Path
 
 import requests
 from behave import given, then, when
+
+GAIA_X_PROFILE_ID = "gaia-x-2511"
 
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
@@ -137,22 +140,42 @@ def save_attestation_credential(context: ContextType) -> None:
 
 @then("compliance check SPARQL result has credentialValidUntil set")
 def compliance_sparql_result_has_credential_valid_until(context: ContextType) -> None:
-    """Assert that the SPARQL result for the compliance check node contains a credentialValidUntil value."""
+    """Assert SPARQL result row with frameworkProfileId='gaia-x-2511' has a credentialValidUntil
+    value that parses as an xsd:dateTime (ISO 8601)."""
     body = context.requests_response.json()
     items = body.get("items", [])
     assert len(items) > 0, \
         f"SPARQL query returned no results — expected a fcmeta:ComplianceCheck node: {body}"
-    # Confirm the validUntil binding is present and non-empty for at least one row
+
+    def _binding_value(row: dict, *needles: str) -> str | None:
+        for key, val in row.items():
+            if any(n in key.lower() for n in needles):
+                if isinstance(val, dict):
+                    val = val.get("value")
+                if val:
+                    return str(val)
+        return None
+
     for row in items:
-        if isinstance(row, dict):
-            # SPARQL result bindings may be nested or flat depending on the graph backend
-            for key in row:
-                if "validuntil" in key.lower():
-                    if row[key]:
-                        return
+        if not isinstance(row, dict):
+            continue
+        profile_id = _binding_value(row, "profileid")
+        if profile_id != GAIA_X_PROFILE_ID:
+            continue
+        valid_until = _binding_value(row, "validuntil")
+        assert valid_until, (
+            f"Row for profileId='{GAIA_X_PROFILE_ID}' has no credentialValidUntil: {row}"
+        )
+        try:
+            datetime.fromisoformat(valid_until.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise AssertionError(
+                f"credentialValidUntil '{valid_until}' is not a valid xsd:dateTime: {exc}"
+            ) from exc
+        return
+
     raise AssertionError(
-        f"SPARQL result returned rows but no non-empty validUntil / credentialValidUntil "
-        f"binding found: {items}"
+        f"No SPARQL result row found with frameworkProfileId='{GAIA_X_PROFILE_ID}': {items}"
     )
 
 
