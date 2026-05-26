@@ -25,11 +25,24 @@ class ContextType:
 # Schema Validation Module Toggle
 # ---------------------------------------------------------------------------
 
+def _track_disabled_module(context: "ContextType", module_type: str) -> None:
+    """Register a disabled module for automatic re-enable in after_scenario.
+
+    Without this, a failed assertion between disable and re-enable would leave
+    the module disabled and poison subsequent scenarios.
+    """
+    if not hasattr(context, "disabled_schema_modules"):
+        context.disabled_schema_modules = []
+    if module_type not in context.disabled_schema_modules:
+        context.disabled_schema_modules.append(module_type)
+
+
 @given("SHACL schema module is disabled")
 def disable_shacl_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(SHACL_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable SHACL module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, SHACL_MODULE_TYPE)
 
 
 @given("SHACL schema module is enabled")
@@ -51,6 +64,7 @@ def disable_json_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable JSON_SCHEMA module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, JSON_SCHEMA_MODULE_TYPE)
 
 
 @given("JSON Schema module is enabled")
@@ -72,6 +86,7 @@ def disable_xml_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable XML_SCHEMA module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, XML_SCHEMA_MODULE_TYPE)
 
 
 @given("XML Schema module is enabled")
@@ -93,6 +108,7 @@ def disable_owl_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(OWL_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable OWL module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, OWL_MODULE_TYPE)
 
 
 @given("OWL schema module is enabled")
@@ -121,6 +137,8 @@ def set_schema_module_to_disabled(context: ContextType, module_type: str) -> Non
     context.requests_response = context.fc_server.set_schema_module_enabled(
         module_type, enabled=False
     )
+    if context.requests_response.status_code == 200:
+        _track_disabled_module(context, module_type)
 
 
 # ---------------------------------------------------------------------------

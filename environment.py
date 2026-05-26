@@ -53,3 +53,20 @@ def after_scenario(context, scenario) -> None:
         context.disabled_roles = []
     except AttributeError:
         pass
+
+    # Restore any schema-validation modules that were disabled during the scenario.
+    # Same rationale as above — a mid-scenario failure must not leak a disabled module
+    # into subsequent scenarios (recurring: SHACL/JSON_SCHEMA/XML_SCHEMA/OWL toggles).
+    try:
+        disabled_modules = list(context.disabled_schema_modules)
+    except AttributeError:
+        disabled_modules = []
+    for module_type in disabled_modules:
+        try:
+            context.fc_server.set_schema_module_enabled(module_type, enabled=True)
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        context.disabled_schema_modules = []
+    except AttributeError:
+        pass
