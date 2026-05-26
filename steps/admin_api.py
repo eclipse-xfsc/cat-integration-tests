@@ -8,10 +8,12 @@ from behave import given, then, when
 
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
+GAIAX_TRUST_FRAMEWORK_ID = "gaia-x"
 MOCK_TRUST_FRAMEWORK_ID = "mock"
 SHACL_MODULE_TYPE = "SHACL"
 JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
+
 
 class ContextType:
     fc_server: Server
@@ -134,6 +136,42 @@ def response_has_admin_stats_fields(context: ContextType) -> None:
     }
     missing = expected_fields - body.keys()
     assert not missing, f"Admin stats response missing fields: {missing}. Got: {list(body.keys())}"
+
+
+# ---------------------------------------------------------------------------
+# Ontology Impact
+# ---------------------------------------------------------------------------
+
+@when("request ontology impact list")
+def request_ontology_impact(context: ContextType) -> None:
+    context.requests_response = context.fc_server.get_ontology_impact()
+
+
+@then("response items is an array")
+def response_items_is_array(context: ContextType) -> None:
+    body = context.requests_response.json()
+    assert isinstance(body.get("items"), list), \
+        f"Expected 'items' to be a list, got: {type(body.get('items'))}. Body: {body}"
+
+
+@then("response items has at least {count:d} entry")
+@then("response items has at least {count:d} entries")
+def response_items_has_at_least(context: ContextType, count: int) -> None:
+    body = context.requests_response.json()
+    items = body.get("items", [])
+    assert len(items) >= count, \
+        f"Expected at least {count} items, got {len(items)}. Body: {body}"
+
+
+@then('response items contributions contain "{role_name}"')
+def response_items_contributions_contain(context: ContextType, role_name: str) -> None:
+    body = context.requests_response.json()
+    items = body.get("items", [])
+    matching = [it for it in items if role_name in (it.get("contributions") or {})]
+    assert matching, \
+        f"No item has contribution for role '{role_name}'. Items: {items}"
+
+
 
 
 # ---------------------------------------------------------------------------

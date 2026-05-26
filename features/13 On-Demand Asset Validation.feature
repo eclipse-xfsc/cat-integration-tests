@@ -272,8 +272,8 @@ Feature: On-Demand Asset Validation
     When validate 1 dummy asset against all schemas
     Then get http 403:Forbidden code
 
-  Scenario: Validate JSON asset when JSON Schema module is disabled returns 422
-    # requireModuleEnabled() throws VerificationException → 422 (server config, not a client error)
+  Scenario: Validate JSON asset when JSON Schema module is disabled returns 400 module_disabled
+    # requireModuleEnabled() throws ClientException → 400 with body "module_disabled:JSON_SCHEMA"
     Given schema from fixture "schemas/person.schema.json" is uploaded as "application/schema+json"
     Then save schema id from last response
     Given asset from fixture "valid/non-rdf/person-valid.json" is not uploaded
@@ -281,11 +281,13 @@ Feature: On-Demand Asset Validation
     Then save asset id from last response
     Given JSON Schema module is disabled
     When validate saved asset against schema by saved id
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:JSON_SCHEMA"
       And JSON Schema module is re-enabled
       And uploaded schemas are cleaned up
 
-  Scenario: Validate XML asset when XML Schema module is disabled returns 422
+  Scenario: Validate XML asset when XML Schema module is disabled returns 400 module_disabled
+    # requireModuleEnabled() throws ClientException → 400 with body "module_disabled:XML_SCHEMA"
     Given schema from fixture "schemas/config.xsd" is uploaded as "application/xml"
     Then save schema id from last response
     Given asset from fixture "valid/non-rdf/config-valid.xml" is not uploaded
@@ -293,8 +295,43 @@ Feature: On-Demand Asset Validation
     Then save asset id from last response
     Given XML Schema module is disabled
     When validate saved asset against schema by saved id
-    Then get http 422:Unprocessable Entity code
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:XML_SCHEMA"
       And XML Schema module is re-enabled
+      And uploaded schemas are cleaned up
+
+  Scenario: JSON Schema module toggle takes effect — off rejects, on accepts
+    # Demonstrates the toggle's symmetric effect: the same validation request is
+    # rejected with module_disabled when the module is off, and succeeds when it is on.
+    Given schema from fixture "schemas/person.schema.json" is uploaded as "application/schema+json"
+    Then save schema id from last response
+    Given asset from fixture "valid/non-rdf/person-valid.json" is not uploaded
+    When add asset from fixture "valid/non-rdf/person-valid.json" with content-type "application/json"
+    Then save asset id from last response
+    Given JSON Schema module is disabled
+    When validate saved asset against schema by saved id
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:JSON_SCHEMA"
+    Given JSON Schema module is enabled
+    When validate saved asset against schema by saved id
+    Then get http 200:Success code
+      And response conforms to schema
+      And uploaded schemas are cleaned up
+
+  Scenario: XML Schema module toggle takes effect — off rejects, on accepts
+    Given schema from fixture "schemas/config.xsd" is uploaded as "application/xml"
+    Then save schema id from last response
+    Given asset from fixture "valid/non-rdf/config-valid.xml" is not uploaded
+    When add asset from fixture "valid/non-rdf/config-valid.xml" with content-type "application/xml"
+    Then save asset id from last response
+    Given XML Schema module is disabled
+    When validate saved asset against schema by saved id
+    Then get http 400:Bad Request code
+      And response body contains "module_disabled:XML_SCHEMA"
+    Given XML Schema module is enabled
+    When validate saved asset against schema by saved id
+    Then get http 200:Success code
+      And response conforms to schema
       And uploaded schemas are cleaned up
 
   Scenario: Deleting an asset cascades delete of its validation results

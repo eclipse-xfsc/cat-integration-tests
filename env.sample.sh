@@ -81,7 +81,7 @@ case ${CAT_ENV} in
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="qa-test-user"
     export CAT_TEST_PASSWORD="qa-test-password"
-    export CAT_WIREMOCK_HOST="https://wiremock.qa.example.org"
+    export CAT_WIREMOCK_HOST="https://wiremock.qa.example.org"  # TODO: set real QA WireMock host
     ;;
 
   *)

@@ -1,0 +1,17 @@
+@prefix ex: <https://example.org/custom#> .
+@prefix gx: <https://w3id.org/gaia-x/2511#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Runtime-uploaded ontology that defines a custom subclass of gx:Participant.
+# Used by the OWL toggle BDD scenarios:
+#   - With OWL enabled, a credential whose type is ex:MyCustomParticipant
+#     resolves to the Participant role via the rdfs:subClassOf+ walk in
+#     ClaimValidator.resolveSubjectRole.
+#   - With OWL disabled, the subclass walk is skipped; the type is unknown
+#     and VerificationServiceImpl rejects the upload with 400.
+
+<https://example.org/custom> a owl:Ontology .
+
+ex:MyCustomParticipant a owl:Class ;
+    rdfs:subClassOf gx:Participant .
