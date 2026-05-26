@@ -23,7 +23,7 @@ COMPLIANCE_ENDPOINT_PATH = "/api/credential-offers/standard-compliance"
 
 # Minimal unsecured JWT (alg:none, empty payload) used as mock attestation body.
 # nimbusds JWTParser accepts PlainJWT; getJWTClaimsSet() returns {} with no exp → validUntil=null.
-ATTESTATION_JWT = "eyJhbGciOiJub25lIn0.e30."
+ATTESTATION_JWT = (FIXTURES_DIR / "mock-attestation.jwt").read_text().strip()
 
 
 class ContextType:
@@ -105,13 +105,20 @@ def run_compliance_check_with_literal(
 # Compliance check — response assertions
 # ---------------------------------------------------------------------------
 
-@then("compliance result conforms is {expected:w}")
-def compliance_result_conforms(context: ContextType, expected: str) -> None:
+@then("compliance result conforms is true")
+def compliance_result_conforms_true(context: ContextType) -> None:
     body = context.requests_response.json()
-    expected_bool = expected.lower() == "true"
     actual = body.get("conforms")
-    assert actual == expected_bool, \
-        f"Expected conforms={expected_bool}, got {actual} in {body}"
+    assert actual is True, \
+        f"Expected conforms=True, got {actual} in {body}"
+
+
+@then("compliance result conforms is false")
+def compliance_result_conforms_false(context: ContextType) -> None:
+    body = context.requests_response.json()
+    actual = body.get("conforms")
+    assert actual is False, \
+        f"Expected conforms=False, got {actual} in {body}"
 
 
 @then('compliance result failure category is "{expected}"')
@@ -206,16 +213,26 @@ def stored_compliance_checks_not_empty(context: ContextType) -> None:
     assert len(body) > 0, "Expected at least one stored compliance check result, got empty list"
 
 
+@then("stored compliance checks list size is at most {n:d}")
+def stored_compliance_checks_list_size_at_most(context: ContextType, n: int) -> None:
+    body = context.requests_response.json()
+    assert isinstance(body, list), f"Expected list, got {type(body).__name__}: {body}"
+    assert len(body) <= n, \
+        f"Expected at most {n} stored compliance checks, got {len(body)} in {body}"
+
+
 # ---------------------------------------------------------------------------
 # WireMock stub helpers (@uses.compliance-mock scenarios only)
 # ---------------------------------------------------------------------------
 
 def _reset_wiremock() -> None:
-    requests.post(f"{WIREMOCK_HOST}/__admin/reset", timeout=5)
+    resp = requests.post(f"{WIREMOCK_HOST}/__admin/reset", timeout=5)
+    resp.raise_for_status()
 
 
 def _add_wiremock_stub(mapping: dict) -> None:
-    requests.post(f"{WIREMOCK_HOST}/__admin/mappings", json=mapping, timeout=5)
+    resp = requests.post(f"{WIREMOCK_HOST}/__admin/mappings", json=mapping, timeout=5)
+    resp.raise_for_status()
 
 
 @given("compliance service is stubbed to issue attestation")
@@ -265,3 +282,21 @@ def stub_compliance_service_error(context) -> None:
             "body": "Service unavailable"
         }
     })
+
+
+@then("compliance service received {n:d} calls")
+def compliance_service_received_n_calls(context: ContextType, n: int) -> None:
+    """Query WireMock's __admin/requests/count to verify POST call count to compliance endpoint."""
+    resp = requests.post(
+        f"{WIREMOCK_HOST}/__admin/requests/count",
+        json={
+            "method": "POST",
+            "urlPathPattern": COMPLIANCE_ENDPOINT_PATH
+        },
+        timeout=5
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    actual = data.get("count", 0)
+    assert actual == n, \
+        f"Expected {n} calls to compliance service, got {actual}"

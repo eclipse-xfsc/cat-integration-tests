@@ -170,6 +170,18 @@ def verify_credential_from_fixture_skip_sigs(context: ContextType, fixture_path:
     })
 
 
+@when('verify credential from fixture "{fixture_path}" with schema check skipping signatures')
+def verify_credential_from_fixture_schema_check(context: ContextType, fixture_path: str) -> None:
+    """Verification with verifySchema=true so the SHACL toggle is exercised on the
+    /verification path regardless of the configured server-side default."""
+    payload = (FIXTURES_DIR / fixture_path).read_text()
+    context.requests_response = context.fc_server.verify(payload, params={
+        "verifySchema": "true",
+        "verifyVPSignature": "false",
+        "verifyVCSignature": "false",
+    })
+
+
 # -- Query --
 
 @when('execute query "{statement}"')

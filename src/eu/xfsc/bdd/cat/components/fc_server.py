@@ -342,6 +342,14 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def get_ontology_impact(self) -> requests.Response:
+        """GET /admin/schema-validation/ontologies"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/schema-validation/ontologies",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     def set_trust_framework_enabled(self, framework_id: str, enabled: bool) -> requests.Response:
         """PUT /admin/trust-frameworks/{id}/enabled?enabled=<bool>"""
         self._update_header(content_type=None)

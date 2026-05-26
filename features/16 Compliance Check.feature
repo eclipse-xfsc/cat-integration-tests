@@ -11,34 +11,31 @@ Feature: Compliance Check
     And Federated Catalogue Server is up
     And mock trust framework is enabled
 
-  # -----------------------------------------------------------------------
-  # Short-circuit outcomes: no compliance service call needed
-  # -----------------------------------------------------------------------
-
+  @uses.compliance-mock
   Scenario: Compliance check with mismatched VP id — returns unverifiable without contacting service
     # VP JWT id "urn:uuid:98765432-..." does not match path asset id "did:web:compliance-test.example.org".
     # Orchestrator short-circuits; compliance service is never contacted.
+    Given compliance service is stubbed to issue attestation
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is false
     And compliance result failure category is "UNVERIFIABLE_ATTESTATION"
+    And compliance service received 0 calls
 
+  @uses.compliance-mock
   Scenario: Compliance check with non-JWT credential — client returns unverifiable without contacting service
     # A plain string is not a parseable JWT: orchestrator passes through (blank id = no mismatch),
     # then the GxdchComplianceClient finds no id claim and returns UNVERIFIABLE_ATTESTATION.
+    Given compliance service is stubbed to issue attestation
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential "not-a-valid-jwt"
     Then get http 200:Success code
     And compliance result conforms is false
     And compliance result failure category is "UNVERIFIABLE_ATTESTATION"
-
-  # -----------------------------------------------------------------------
-  # Stored result retrieval
-  # -----------------------------------------------------------------------
+    And compliance service received 0 calls
 
   @smoke
   Scenario: Stored compliance checks are retrievable after a compliance check
-    # The id-mismatch scenario above already stores a result for this asset id.
-    # Run one more to ensure at least one result is present before asserting.
+    # Self-contained: runs its own compliance check before retrieval.
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     When get stored compliance checks for asset "did:web:compliance-test.example.org"
@@ -48,10 +45,7 @@ Feature: Compliance Check
   Scenario: Get stored compliance checks — pagination parameters are accepted
     When get stored compliance checks for asset "did:web:compliance-test.example.org" with offset 0 and limit 1
     Then get http 200:Success code
-
-  # -----------------------------------------------------------------------
-  # Negative: bad request input
-  # -----------------------------------------------------------------------
+    And stored compliance checks list size is at most 1
 
   Scenario: Unknown framework profile — returns 400
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "unknown-profile-xyz" and credential "any"
