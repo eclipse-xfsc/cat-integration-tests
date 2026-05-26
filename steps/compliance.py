@@ -6,10 +6,13 @@ WireMock-tagged scenarios (@uses.compliance-mock) require:
   - The FC server's mock-2026 service_url configured to the same WireMock host
 """
 import os
+from datetime import datetime
 from pathlib import Path
 
 import requests
 from behave import given, then, when
+
+GAIA_X_PROFILE_ID = "gaia-x-2511"
 
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
@@ -65,6 +68,20 @@ def response_does_not_contain_trust_framework(context: ContextType, family_id: s
 # Compliance check — request
 # ---------------------------------------------------------------------------
 
+@when('run compliance check for saved asset with profile "{profile}" '
+      'and credential from fixture "{fixture_path}"')
+def run_compliance_check_for_saved_asset_from_fixture(
+        context: ContextType, profile: str, fixture_path: str
+) -> None:
+    """POST /assets/{id}/compliance-check — asset id from context.last_asset_id, credential from fixture."""
+    assert hasattr(context, "last_asset_id"), \
+        "No saved asset id — call 'save asset id from last response' first"
+    credential = (FIXTURES_DIR / fixture_path).read_text().strip()
+    context.requests_response = context.fc_server.run_compliance_check(
+        context.last_asset_id, profile, credential
+    )
+
+
 @when('run compliance check for asset "{asset_id}" with profile "{profile}" '
       'and credential from fixture "{fixture_path}"')
 def run_compliance_check_from_fixture(
@@ -117,6 +134,56 @@ def compliance_result_has_attestation_credential(context: ContextType) -> None:
     body = context.requests_response.json()
     credential = body.get("attestationCredential")
     assert credential, f"Expected non-empty attestationCredential in {body}"
+
+
+@then("save attestation credential from last compliance response")
+def save_attestation_credential(context: ContextType) -> None:
+    """Save attestationCredential JWT from the last compliance check response for later assertions."""
+    body = context.requests_response.json()
+    credential = body.get("attestationCredential")
+    assert credential, f"Expected non-empty attestationCredential in {body}"
+    context.last_attestation_credential = credential
+
+
+@then("compliance check SPARQL result has credentialValidUntil set")
+def compliance_sparql_result_has_credential_valid_until(context: ContextType) -> None:
+    """Assert SPARQL result row with frameworkProfileId='gaia-x-2511' has a credentialValidUntil
+    value that parses as an xsd:dateTime (ISO 8601)."""
+    body = context.requests_response.json()
+    items = body.get("items", [])
+    assert len(items) > 0, \
+        f"SPARQL query returned no results — expected a fcmeta:ComplianceCheck node: {body}"
+
+    def _binding_value(row: dict, *needles: str) -> str | None:
+        for key, val in row.items():
+            if any(n in key.lower() for n in needles):
+                if isinstance(val, dict):
+                    val = val.get("value")
+                if val:
+                    return str(val)
+        return None
+
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        profile_id = _binding_value(row, "profileid")
+        if profile_id != GAIA_X_PROFILE_ID:
+            continue
+        valid_until = _binding_value(row, "validuntil")
+        assert valid_until, (
+            f"Row for profileId='{GAIA_X_PROFILE_ID}' has no credentialValidUntil: {row}"
+        )
+        try:
+            datetime.fromisoformat(valid_until.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise AssertionError(
+                f"credentialValidUntil '{valid_until}' is not a valid xsd:dateTime: {exc}"
+            ) from exc
+        return
+
+    raise AssertionError(
+        f"No SPARQL result row found with frameworkProfileId='{GAIA_X_PROFILE_ID}': {items}"
+    )
 
 
 # ---------------------------------------------------------------------------
