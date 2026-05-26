@@ -13,6 +13,7 @@ MOCK_TRUST_FRAMEWORK_ID = "mock"
 SHACL_MODULE_TYPE = "SHACL"
 JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
+OWL_MODULE_TYPE = "OWL"
 
 
 class ContextType:
@@ -52,6 +53,13 @@ def disable_json_schema_module(context: ContextType) -> None:
         f"Failed to disable JSON_SCHEMA module: {resp.status_code} {resp.text}"
 
 
+@given("JSON Schema module is enabled")
+def enable_json_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to enable JSON_SCHEMA module: {resp.status_code} {resp.text}"
+
+
 @then("JSON Schema module is re-enabled")
 def reenable_json_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=True)
@@ -66,11 +74,53 @@ def disable_xml_schema_module(context: ContextType) -> None:
         f"Failed to disable XML_SCHEMA module: {resp.status_code} {resp.text}"
 
 
+@given("XML Schema module is enabled")
+def enable_xml_schema_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to enable XML_SCHEMA module: {resp.status_code} {resp.text}"
+
+
 @then("XML Schema module is re-enabled")
 def reenable_xml_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=True)
     assert resp.status_code == 200, \
         f"Failed to re-enable XML_SCHEMA module: {resp.status_code} {resp.text}"
+
+
+@given("OWL schema module is disabled")
+def disable_owl_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(OWL_MODULE_TYPE, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable OWL module: {resp.status_code} {resp.text}"
+
+
+@given("OWL schema module is enabled")
+def enable_owl_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(OWL_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to enable OWL module: {resp.status_code} {resp.text}"
+
+
+@then("OWL schema module is re-enabled")
+def reenable_owl_module(context: ContextType) -> None:
+    resp = context.fc_server.set_schema_module_enabled(OWL_MODULE_TYPE, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to re-enable OWL module: {resp.status_code} {resp.text}"
+
+
+@when('set schema module "{module_type}" to enabled')
+def set_schema_module_to_enabled(context: ContextType, module_type: str) -> None:
+    context.requests_response = context.fc_server.set_schema_module_enabled(
+        module_type, enabled=True
+    )
+
+
+@when('set schema module "{module_type}" to disabled')
+def set_schema_module_to_disabled(context: ContextType, module_type: str) -> None:
+    context.requests_response = context.fc_server.set_schema_module_enabled(
+        module_type, enabled=False
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +242,7 @@ def disable_trust_framework_role(context: ContextType, role_name: str, bundle_id
         context.disabled_roles.append(entry)
 
 
+@given('role {role_name} of bundle {bundle_id} is re-enabled')
 @then('role {role_name} of bundle {bundle_id} is re-enabled')
 def reenable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
     resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=True)

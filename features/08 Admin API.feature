@@ -148,7 +148,7 @@ Feature: Admin API — Runtime Configuration
 
   @baseline
   Scenario: Set schema module enabled rejects invalid module type with valid options listed
-    # The path-variable enum on PUT /admin/schema-validation/modules/{type} rejects
+    # The path-variable enum on PATCH /admin/schema-validation/modules/{type} rejects
     # values outside SHACL, JSON_SCHEMA, XML_SCHEMA, OWL. The error message lists
     # the accepted enum values so an admin client can correct the request.
     When set schema module "INVALID" to enabled
