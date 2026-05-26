@@ -23,21 +23,25 @@ Feature: Gaia-X Live DCH Compliance Check
     And Federated Catalogue Server is up
     And Gaia-X trust framework is enabled
 
-  @smoke
+  @smoke @wip
   Scenario: Loire-conformant asset passes Live DCH compliance check
     # Precondition: gaia-x family enabled (Background).
     # Upload a Loire-conformant VP JWT signed with a key whose x5u chain is trusted
     # by the real Gaia-X Trust Anchor registry.
-    # Fixture: fixtures/loire/valid/participant-vp.loire.signed.jwt
-    # NOTE: this fixture uses did:web:did-server (local test key). For this scenario
-    # to produce conforms=true against the live DCH, replace with a fixture signed
-    # by a real participant key whose x5u is publicly resolvable and DCH-trusted.
-    # The steps below are correct; the fixture is a placeholder for the QA signing key.
-    Given credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
-    When add credential from fixture "loire/valid/participant-vp.loire.signed.jwt" with content-type "application/vp+jwt"
+    #
+    # FIXTURE: fixtures/loire/valid/participant-vp.loire.dch-trusted.signed.jwt
+    # — NOT committed; must be provisioned for QA. Provisioning checklist:
+    #   1. A real participant DID with x5u resolvable to a Gaia-X Trust Anchor chain.
+    #   2. A JSON-LD payload (copy participant-vp.loire.jsonld; set `iss`/`issuer`
+    #      to the real DID).
+    #   3. Sign with the matching private key (algo per DCH spec; not Ed25519/
+    #      did:web:did-server as in the negative-case fixture below).
+    # Once the file is in place, drop @wip.
+    Given credential from fixture "loire/valid/participant-vp.loire.dch-trusted.signed.jwt" is not uploaded
+    When add credential from fixture "loire/valid/participant-vp.loire.dch-trusted.signed.jwt" with content-type "application/vp+jwt"
     Then get http 201:Created code
     And save asset id from last response
-    When run compliance check for saved asset with profile "gaia-x-2511" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for saved asset with profile "gaia-x-2511" and credential from fixture "loire/valid/participant-vp.loire.dch-trusted.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is true
     And compliance result has attestation credential
@@ -56,7 +60,7 @@ Feature: Gaia-X Live DCH Compliance Check
 
   Scenario: Non-conformant asset fails Live DCH compliance check with UNVERIFIABLE_ATTESTATION
     # A VP signed with a non-DCH-trusted key will be rejected by the live DCH.
-    # The GxdchComplianceClient maps any DCH rejection (4xx) to UNVERIFIABLE_ATTESTATION.
+    # The JwtVcComplianceClient maps any DCH rejection (4xx) to UNVERIFIABLE_ATTESTATION.
     # Fixture: fixtures/loire/valid/participant-vp.loire.signed.jwt (local test key,
     # not trusted by real DCH — produces the expected rejection).
     Given credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded

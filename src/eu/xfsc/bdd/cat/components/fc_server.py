@@ -336,11 +336,11 @@ class Server(BaseServiceKeycloak):
         )
 
     def set_schema_module_enabled(self, module_type: str, enabled: bool) -> requests.Response:
-        """PATCH /admin/schema-validation/modules/{type} with body {"enabled": <bool>}"""
+        """PATCH /admin/schema-validation/modules/{type} with merge-patch body."""
         self._update_header(content_type=MERGE_PATCH_JSON)
         return self.http.patch(
             url=f"{self.host}admin/schema-validation/modules/{module_type}",
-            json={"enabled": enabled},
+            data=json.dumps({"enabled": enabled}),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
@@ -353,22 +353,22 @@ class Server(BaseServiceKeycloak):
         )
 
     def set_trust_framework_enabled(self, framework_id: str, enabled: bool) -> requests.Response:
-        """PATCH /admin/trust-frameworks/{id} with body {"enabled": <bool>}"""
+        """PATCH /admin/trust-frameworks/{id} with merge-patch body."""
         self._update_header(content_type=MERGE_PATCH_JSON)
         return self.http.patch(
             url=f"{self.host}admin/trust-frameworks/{framework_id}",
-            json={"enabled": enabled},
+            data=json.dumps({"enabled": enabled}),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
     def set_trust_framework_role_enabled(
         self, bundle_id: str, role_name: str, enabled: bool
     ) -> requests.Response:
-        """PATCH /admin/trust-frameworks/{bundleId}/roles/{roleName} with body {"enabled": <bool>}"""
+        """PATCH /admin/trust-frameworks/{bundleId}/roles/{roleName} with merge-patch body."""
         self._update_header(content_type=MERGE_PATCH_JSON)
         return self.http.patch(
             url=f"{self.host}admin/trust-frameworks/{bundle_id}/roles/{role_name}",
-            json={"enabled": enabled},
+            data=json.dumps({"enabled": enabled}),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 

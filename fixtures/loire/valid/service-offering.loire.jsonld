@@ -12,6 +12,28 @@
   "validUntil": "2027-12-31T23:59:59Z",
   "credentialSubject": {
     "id": "https://service-provider.example.com/offering/1",
-    "@type": "gx:ServiceOffering"
+    "@type": "gx:ServiceOffering",
+    "gx:providedBy": {
+      "@type": "gx:LegalPerson",
+      "gx:registrationNumber": {
+        "@type": "gx:RegistrationNumber"
+      },
+      "gx:headquartersAddress": {
+        "@type": "gx:Address",
+        "gx:countryCode": "DE"
+      },
+      "gx:legalAddress": {
+        "@type": "gx:Address",
+        "gx:countryCode": "DE"
+      }
+    },
+    "gx:serviceOfferingTermsAndConditions": {
+      "@type": "gx:TermsAndConditions",
+      "gx:url": {
+        "@type": "xsd:anyURI",
+        "@value": "https://service-provider.example.com/terms"
+      },
+      "gx:hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
   }
 }
