@@ -359,6 +359,42 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    # -- Graph Database Admin --
+
+    def get_graph_database_status(self) -> requests.Response:
+        """GET /admin/graph-database"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/graph-database",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def switch_graph_database(self, backend: str) -> requests.Response:
+        """POST /admin/graph-database/switch — backend ∈ {NEO4J, FUSEKI, NONE}"""
+        self._update_header()
+        return self.http.post(
+            url=f"{self.host}admin/graph-database/switch",
+            json={"backend": backend},
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def trigger_graph_rebuild(self) -> requests.Response:
+        """POST /admin/graph/rebuild"""
+        self._update_header()
+        return self.http.post(
+            url=f"{self.host}admin/graph/rebuild",
+            json={},
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def get_graph_rebuild_status(self) -> requests.Response:
+        """GET /admin/graph/rebuild/status"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/graph/rebuild/status",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     # -- Validation Results (CO-02) --
 
     def get_asset_validations(
