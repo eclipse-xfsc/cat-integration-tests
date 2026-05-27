@@ -88,3 +88,40 @@ Feature: Compliance Check
     Given compliance service is stubbed to return service error
     When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 503:Service Unavailable code
+
+  # -----------------------------------------------------------------------
+  # Runtime bundle-config override (CAT-FR-CO-03 "configuring their unique identifiers")
+  # Demonstrates that an operator-issued PATCH to /admin/trust-frameworks/bundles/{id}
+  # immediately redirects subsequent compliance calls to the new endpoint identifier,
+  # without restarting the catalogue server.
+  # -----------------------------------------------------------------------
+
+  @req.CAT-FR-CO-03 @uses.compliance-mock
+  Scenario: Operator overrides bundle compliance path — next compliance call hits the new path
+    # Both the YAML-default path and the new path are stubbed at WireMock.
+    # After the operator's PATCH, the orchestrator must resolve the override
+    # and route the credential POST to the new path; the YAML-default path
+    # must receive zero calls for this scenario's check.
+    Given compliance service is stubbed to issue attestation
+    And compliance service is stubbed to issue attestation on path "/api/credential-offers/relocated-compliance"
+    And operator overrides bundle "mock-2026" config: compliancePath = "/api/credential-offers/relocated-compliance"
+    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    Then get http 200:Success code
+    And compliance result conforms is true
+    And compliance service received 1 calls on path "/api/credential-offers/relocated-compliance"
+    And compliance service received 0 calls on path "/api/credential-offers/standard-compliance"
+
+  @req.CAT-FR-CO-03 @uses.compliance-mock
+  Scenario: Operator reverts the override — subsequent compliance call returns to YAML-default path
+    # The PATCH override is applied, then explicitly cleared via JSON null.
+    # The next compliance call must again hit the YAML-default path; the previously
+    # overridden path must receive zero calls for this scenario's check.
+    Given compliance service is stubbed to issue attestation
+    And compliance service is stubbed to issue attestation on path "/api/credential-offers/relocated-compliance"
+    And operator overrides bundle "mock-2026" config: compliancePath = "/api/credential-offers/relocated-compliance"
+    And operator overrides bundle "mock-2026" config: compliancePath = "null"
+    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    Then get http 200:Success code
+    And compliance result conforms is true
+    And compliance service received 1 calls on path "/api/credential-offers/standard-compliance"
+    And compliance service received 0 calls on path "/api/credential-offers/relocated-compliance"

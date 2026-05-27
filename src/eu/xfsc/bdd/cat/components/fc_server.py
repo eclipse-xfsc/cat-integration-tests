@@ -372,6 +372,33 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def patch_trust_framework_bundle_config(
+            self, bundle_id: str, body: dict
+    ) -> requests.Response:
+        """PATCH /admin/trust-frameworks/bundles/{bundleId} with a merge-patch body.
+
+        Body is a free-form object whose recognised keys are clientType, serviceUrl,
+        compliancePath, apiVersion, timeoutSeconds, trustAnchorUrl. A key set to JSON
+        null clears the corresponding override; a key set to a value overrides the
+        bundle YAML for that field; an omitted key leaves the existing state untouched.
+        """
+        self._update_header(content_type=MERGE_PATCH_JSON)
+        return self.http.patch(
+            url=f"{self.host}admin/trust-frameworks/bundles/{bundle_id}",
+            data=json.dumps(body),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def delete_trust_framework_bundle_config(
+            self, bundle_id: str
+    ) -> requests.Response:
+        """DELETE /admin/trust-frameworks/bundles/{bundleId} — clears all overrides."""
+        self._update_header()
+        return self.http.delete(
+            url=f"{self.host}admin/trust-frameworks/bundles/{bundle_id}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
     def get_admin_trust_frameworks(self) -> requests.Response:
         """GET /admin/trust-frameworks"""
         self._update_header()

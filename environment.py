@@ -70,3 +70,20 @@ def after_scenario(context, scenario) -> None:
         context.disabled_schema_modules = []
     except AttributeError:
         pass
+
+    # Clear any per-bundle config overrides applied during the scenario so a
+    # mid-scenario failure cannot leave a bundle pointing at a stale compliance
+    # endpoint and poison subsequent scenarios (CAT-FR-CO-03 bundle-config tests).
+    try:
+        overridden_bundles = list(context.overridden_bundles)
+    except AttributeError:
+        overridden_bundles = []
+    for bundle_id in overridden_bundles:
+        try:
+            context.fc_server.delete_trust_framework_bundle_config(bundle_id)
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        context.overridden_bundles = []
+    except AttributeError:
+        pass

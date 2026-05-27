@@ -15,6 +15,16 @@ JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
 OWL_MODULE_TYPE = "OWL"
 
+BUNDLE_CONFIG_KEYS = {
+    "clientType",
+    "serviceUrl",
+    "compliancePath",
+    "apiVersion",
+    "timeoutSeconds",
+    "trustAnchorUrl",
+}
+INTEGER_BUNDLE_CONFIG_KEYS = {"timeoutSeconds"}
+
 
 class ContextType:
     fc_server: Server
@@ -296,3 +306,55 @@ def admin_trust_frameworks_bundle_role_enabled(
         f"Role '{role_name}' not found in bundle '{bundle_id}' roles: {roles}"
     assert roles[role_name] is True, \
         f"Expected role '{bundle_id}/{role_name}' to be enabled (true), got: {roles[role_name]}"
+
+
+# ---------------------------------------------------------------------------
+# Trust Framework Bundle Config Overrides (CAT-FR-CO-03 "configuring their unique identifiers")
+# ---------------------------------------------------------------------------
+
+def _track_bundle_override(context: "ContextType", bundle_id: str) -> None:
+    """Register a bundle for automatic override-clear in after_scenario.
+
+    Without this, a failed assertion between override and revert would leave the
+    bundle's runtime configuration diverged from YAML and poison subsequent
+    scenarios.
+    """
+    if not hasattr(context, "overridden_bundles"):
+        context.overridden_bundles = []
+    if bundle_id not in context.overridden_bundles:
+        context.overridden_bundles.append(bundle_id)
+
+
+def _coerce_bundle_config_value(key: str, raw_value: str):
+    """Convert a Gherkin string value into the JSON shape expected by the patch endpoint.
+
+    The literal value "null" yields JSON null (clears the override). Integer-typed
+    keys are parsed; other keys remain as strings.
+    """
+    if raw_value == "null":
+        return None
+    if key in INTEGER_BUNDLE_CONFIG_KEYS:
+        return int(raw_value)
+    return raw_value
+
+
+@given('operator overrides bundle "{bundle_id}" config: {key} = "{value}"')
+def override_bundle_config(
+        context: ContextType, bundle_id: str, key: str, value: str
+) -> None:
+    """PATCH /admin/trust-frameworks/bundles/{bundleId} with a single-field merge-patch."""
+    assert key in BUNDLE_CONFIG_KEYS, \
+        f"Unknown bundle config key '{key}'; valid keys: {sorted(BUNDLE_CONFIG_KEYS)}"
+    body = {key: _coerce_bundle_config_value(key, value)}
+    resp = context.fc_server.patch_trust_framework_bundle_config(bundle_id, body)
+    assert resp.status_code == 200, \
+        f"Failed to override bundle '{bundle_id}' {key}: {resp.status_code} {resp.text}"
+    _track_bundle_override(context, bundle_id)
+
+
+@given('operator clears all overrides for bundle "{bundle_id}"')
+def clear_bundle_overrides(context: ContextType, bundle_id: str) -> None:
+    """DELETE /admin/trust-frameworks/bundles/{bundleId}."""
+    resp = context.fc_server.delete_trust_framework_bundle_config(bundle_id)
+    assert resp.status_code == 200, \
+        f"Failed to clear overrides for bundle '{bundle_id}': {resp.status_code} {resp.text}"
