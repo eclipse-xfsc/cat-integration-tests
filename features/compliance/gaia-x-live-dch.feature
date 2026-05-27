@@ -7,7 +7,7 @@ Feature: Gaia-X Live DCH Compliance Check
   # These scenarios require:
   #   - A QA stage with internet access to https://compliance.gaia-x.eu/v2
   #   - The gaia-x trust framework family enabled:
-  #       PATCH /admin/trust-frameworks/gaia-x {"enabled":true}
+  #       PUT /admin/trust-frameworks/gaia-x/enabled?enabled=true
   #       or env FEDERATED_CATALOGUE_ENABLED_TRUST_FRAMEWORKS=gaia-x
   #   - A signing key with a publicly resolvable x5u certificate chain trusted
   #     by the Gaia-X Trust Anchor registry (self-signed local CA not sufficient)

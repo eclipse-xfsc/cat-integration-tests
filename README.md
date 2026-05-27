@@ -183,7 +183,7 @@ They must be triggered explicitly by tag.
 # Prerequisites:
 #   1. CAT_ENV=qa (or another non-local target with internet access)
 #   2. gaia-x trust framework enabled on the target stage:
-#        curl -X PATCH $CAT_FC_HOST/admin/trust-frameworks/gaia-x -d '{"enabled":true}'
+#        curl -X PUT "$CAT_FC_HOST/admin/trust-frameworks/gaia-x/enabled?enabled=true"
 #        or env FEDERATED_CATALOGUE_ENABLED_TRUST_FRAMEWORKS=gaia-x
 #   3. The participant VP fixture must be signed by a key whose x5u resolves to a
 #      public certificate chain trusted by the Gaia-X Trust Anchor registry
