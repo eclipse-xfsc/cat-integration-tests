@@ -15,3 +15,8 @@ build/
 .coverage
 behave*.html
 env.sh
+
+# JWT signing keys for fixture generation — regenerate via `make sign-jwt-fixtures`.
+# Committed .signed.jwt artifacts are verifiable against the public key in
+# federated-catalogue/docker/did-server/www/.well-known/did.json.
+keys/
