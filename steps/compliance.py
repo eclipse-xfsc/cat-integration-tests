@@ -20,6 +20,10 @@ FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 WIREMOCK_HOST = os.getenv("CAT_WIREMOCK_HOST", "http://localhost:8089")
 COMPLIANCE_ENDPOINT_PATH = "/api/credential-offers/standard-compliance"
+# Alternative path used by CAT-FR-CO-03 bundle-config override scenarios; the operator
+# repoints the bundle's compliancePath to this URL at runtime, and the test verifies
+# the next compliance call lands here rather than on COMPLIANCE_ENDPOINT_PATH.
+RELOCATED_COMPLIANCE_ENDPOINT_PATH = "/api/credential-offers/relocated-compliance"
 
 # Minimal unsecured JWT (alg:none, empty payload) used as mock attestation body.
 # nimbusds JWTParser accepts PlainJWT; getJWTClaimsSet() returns {} with no exp → validUntil=null.
@@ -300,3 +304,42 @@ def compliance_service_received_n_calls(context: ContextType, n: int) -> None:
     actual = data.get("count", 0)
     assert actual == n, \
         f"Expected {n} calls to compliance service, got {actual}"
+
+
+@given('compliance service is stubbed to issue attestation on path "{path}"')
+def stub_compliance_success_on_path(context, path: str) -> None:
+    """WireMock returns 201 with a minimal valid JWT on the given URL path.
+
+    Used by bundle-config override scenarios where the operator repoints the
+    bundle's compliancePath at runtime: the test stubs the new path alongside
+    the YAML default so call routing can be verified per-path.
+    """
+    _add_wiremock_stub({
+        "request": {
+            "method": "POST",
+            "urlPathPattern": path
+        },
+        "response": {
+            "status": 201,
+            "headers": {"Content-Type": "text/plain"},
+            "body": ATTESTATION_JWT
+        }
+    })
+
+
+@then('compliance service received {n:d} calls on path "{path}"')
+def compliance_service_received_n_calls_on_path(context: ContextType, n: int, path: str) -> None:
+    """Query WireMock's __admin/requests/count for a specific URL path pattern."""
+    resp = requests.post(
+        f"{WIREMOCK_HOST}/__admin/requests/count",
+        json={
+            "method": "POST",
+            "urlPathPattern": path
+        },
+        timeout=5
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    actual = data.get("count", 0)
+    assert actual == n, \
+        f"Expected {n} POST calls on path '{path}', got {actual}"

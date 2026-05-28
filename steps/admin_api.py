@@ -15,6 +15,16 @@ JSON_SCHEMA_MODULE_TYPE = "JSON_SCHEMA"
 XML_SCHEMA_MODULE_TYPE = "XML_SCHEMA"
 OWL_MODULE_TYPE = "OWL"
 
+BUNDLE_CONFIG_KEYS = {
+    "clientType",
+    "serviceUrl",
+    "compliancePath",
+    "apiVersion",
+    "timeoutSeconds",
+    "trustAnchorUrl",
+}
+INTEGER_BUNDLE_CONFIG_KEYS = {"timeoutSeconds"}
+
 
 class ContextType:
     fc_server: Server
@@ -25,11 +35,24 @@ class ContextType:
 # Schema Validation Module Toggle
 # ---------------------------------------------------------------------------
 
+def _track_disabled_module(context: "ContextType", module_type: str) -> None:
+    """Register a disabled module for automatic re-enable in after_scenario.
+
+    Without this, a failed assertion between disable and re-enable would leave
+    the module disabled and poison subsequent scenarios.
+    """
+    if not hasattr(context, "disabled_schema_modules"):
+        context.disabled_schema_modules = []
+    if module_type not in context.disabled_schema_modules:
+        context.disabled_schema_modules.append(module_type)
+
+
 @given("SHACL schema module is disabled")
 def disable_shacl_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(SHACL_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable SHACL module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, SHACL_MODULE_TYPE)
 
 
 @given("SHACL schema module is enabled")
@@ -51,6 +74,7 @@ def disable_json_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(JSON_SCHEMA_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable JSON_SCHEMA module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, JSON_SCHEMA_MODULE_TYPE)
 
 
 @given("JSON Schema module is enabled")
@@ -72,6 +96,7 @@ def disable_xml_schema_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(XML_SCHEMA_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable XML_SCHEMA module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, XML_SCHEMA_MODULE_TYPE)
 
 
 @given("XML Schema module is enabled")
@@ -93,6 +118,7 @@ def disable_owl_module(context: ContextType) -> None:
     resp = context.fc_server.set_schema_module_enabled(OWL_MODULE_TYPE, enabled=False)
     assert resp.status_code == 200, \
         f"Failed to disable OWL module: {resp.status_code} {resp.text}"
+    _track_disabled_module(context, OWL_MODULE_TYPE)
 
 
 @given("OWL schema module is enabled")
@@ -110,11 +136,19 @@ def reenable_owl_module(context: ContextType) -> None:
 
 
 @when('set schema module "{module_type}" to enabled')
-def set_schema_module_enabled_generic(context: ContextType, module_type: str) -> None:
-    """Generic PUT for negative cases (e.g. invalid module type names)."""
+def set_schema_module_to_enabled(context: ContextType, module_type: str) -> None:
     context.requests_response = context.fc_server.set_schema_module_enabled(
         module_type, enabled=True
     )
+
+
+@when('set schema module "{module_type}" to disabled')
+def set_schema_module_to_disabled(context: ContextType, module_type: str) -> None:
+    context.requests_response = context.fc_server.set_schema_module_enabled(
+        module_type, enabled=False
+    )
+    if context.requests_response.status_code == 200:
+        _track_disabled_module(context, module_type)
 
 
 # ---------------------------------------------------------------------------
@@ -216,3 +250,111 @@ def response_items_contributions_contain(context: ContextType, role_name: str) -
         f"No item has contribution for role '{role_name}'. Items: {items}"
 
 
+
+
+# ---------------------------------------------------------------------------
+# Trust Framework Role Toggle
+# ---------------------------------------------------------------------------
+
+@given('role {role_name} of bundle {bundle_id} is disabled')
+def disable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=False)
+    assert resp.status_code == 200, \
+        f"Failed to disable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+    # Register for automatic cleanup in after_scenario so the state is restored
+    # even when a subsequent assertion fails (cleanup-on-failure safety).
+    if not hasattr(context, "disabled_roles"):
+        context.disabled_roles = []
+    entry = (bundle_id, role_name)
+    if entry not in context.disabled_roles:
+        context.disabled_roles.append(entry)
+
+
+@given('role {role_name} of bundle {bundle_id} is re-enabled')
+@then('role {role_name} of bundle {bundle_id} is re-enabled')
+def reenable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=True)
+    assert resp.status_code == 200, \
+        f"Failed to re-enable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+
+
+@when("request admin trust frameworks")
+def request_admin_trust_frameworks(context: ContextType) -> None:
+    """GET /admin/trust-frameworks"""
+    context.requests_response = context.fc_server.get_admin_trust_frameworks()
+
+
+@then('admin trust frameworks response includes bundle "{bundle_id}" with role "{role_name}" enabled')
+def admin_trust_frameworks_bundle_role_enabled(
+    context: ContextType, bundle_id: str, role_name: str
+) -> None:
+    body = context.requests_response.json()
+    assert isinstance(body, list), f"Expected list, got {type(body).__name__}: {body}"
+    # Find any family entry that contains a bundle with the given id
+    bundle = None
+    for family in body:
+        for b in family.get("bundles", []):
+            if b.get("id") == bundle_id:
+                bundle = b
+                break
+        if bundle:
+            break
+    assert bundle is not None, \
+        f"Bundle '{bundle_id}' not found in admin trust-frameworks response: {body}"
+    roles = bundle.get("roles", {})
+    assert role_name in roles, \
+        f"Role '{role_name}' not found in bundle '{bundle_id}' roles: {roles}"
+    assert roles[role_name] is True, \
+        f"Expected role '{bundle_id}/{role_name}' to be enabled (true), got: {roles[role_name]}"
+
+
+# ---------------------------------------------------------------------------
+# Trust Framework Bundle Config Overrides (CAT-FR-CO-03 "configuring their unique identifiers")
+# ---------------------------------------------------------------------------
+
+def _track_bundle_override(context: "ContextType", bundle_id: str) -> None:
+    """Register a bundle for automatic override-clear in after_scenario.
+
+    Without this, a failed assertion between override and revert would leave the
+    bundle's runtime configuration diverged from YAML and poison subsequent
+    scenarios.
+    """
+    if not hasattr(context, "overridden_bundles"):
+        context.overridden_bundles = []
+    if bundle_id not in context.overridden_bundles:
+        context.overridden_bundles.append(bundle_id)
+
+
+def _coerce_bundle_config_value(key: str, raw_value: str):
+    """Convert a Gherkin string value into the JSON shape expected by the patch endpoint.
+
+    The literal value "null" yields JSON null (clears the override). Integer-typed
+    keys are parsed; other keys remain as strings.
+    """
+    if raw_value == "null":
+        return None
+    if key in INTEGER_BUNDLE_CONFIG_KEYS:
+        return int(raw_value)
+    return raw_value
+
+
+@given('operator overrides bundle "{bundle_id}" config: {key} = "{value}"')
+def override_bundle_config(
+        context: ContextType, bundle_id: str, key: str, value: str
+) -> None:
+    """PATCH /admin/trust-frameworks/bundles/{bundleId} with a single-field merge-patch."""
+    assert key in BUNDLE_CONFIG_KEYS, \
+        f"Unknown bundle config key '{key}'; valid keys: {sorted(BUNDLE_CONFIG_KEYS)}"
+    body = {key: _coerce_bundle_config_value(key, value)}
+    resp = context.fc_server.patch_trust_framework_bundle_config(bundle_id, body)
+    assert resp.status_code == 200, \
+        f"Failed to override bundle '{bundle_id}' {key}: {resp.status_code} {resp.text}"
+    _track_bundle_override(context, bundle_id)
+
+
+@given('operator clears all overrides for bundle "{bundle_id}"')
+def clear_bundle_overrides(context: ContextType, bundle_id: str) -> None:
+    """DELETE /admin/trust-frameworks/bundles/{bundleId}."""
+    resp = context.fc_server.delete_trust_framework_bundle_config(bundle_id)
+    assert resp.status_code == 200, \
+        f"Failed to clear overrides for bundle '{bundle_id}': {resp.status_code} {resp.text}"

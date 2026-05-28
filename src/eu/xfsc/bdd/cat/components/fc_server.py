@@ -12,6 +12,8 @@ from eu.xfsc.bdd.cat.env import FC_HOST
 from eu.xfsc.bdd.core.defaults import CONNECT_TIMEOUT_IN_SECONDS
 from eu.xfsc.bdd.core.server.keycloak import BaseServiceKeycloak
 
+MERGE_PATCH_JSON = "application/merge-patch+json"
+
 
 class Server(BaseServiceKeycloak):
     """
@@ -334,11 +336,11 @@ class Server(BaseServiceKeycloak):
         )
 
     def set_schema_module_enabled(self, module_type: str, enabled: bool) -> requests.Response:
-        """PUT /admin/schema-validation/modules/{type}?enabled=<bool>"""
-        self._update_header(content_type=None)
-        return self.http.put(
+        """PATCH /admin/schema-validation/modules/{type} with merge-patch body."""
+        self._update_header(content_type=MERGE_PATCH_JSON)
+        return self.http.patch(
             url=f"{self.host}admin/schema-validation/modules/{module_type}",
-            params={"enabled": str(enabled).lower()},
+            data=json.dumps({"enabled": enabled}),
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
@@ -351,11 +353,57 @@ class Server(BaseServiceKeycloak):
         )
 
     def set_trust_framework_enabled(self, framework_id: str, enabled: bool) -> requests.Response:
-        """PUT /admin/trust-frameworks/{id}/enabled?enabled=<bool>"""
-        self._update_header(content_type=None)
-        return self.http.put(
-            url=f"{self.host}admin/trust-frameworks/{framework_id}/enabled",
-            params={"enabled": str(enabled).lower()},
+        """PATCH /admin/trust-frameworks/{id} with merge-patch body."""
+        self._update_header(content_type=MERGE_PATCH_JSON)
+        return self.http.patch(
+            url=f"{self.host}admin/trust-frameworks/{framework_id}",
+            data=json.dumps({"enabled": enabled}),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def set_trust_framework_role_enabled(
+        self, bundle_id: str, role_name: str, enabled: bool
+    ) -> requests.Response:
+        """PATCH /admin/trust-frameworks/{bundleId}/roles/{roleName} with merge-patch body."""
+        self._update_header(content_type=MERGE_PATCH_JSON)
+        return self.http.patch(
+            url=f"{self.host}admin/trust-frameworks/{bundle_id}/roles/{role_name}",
+            data=json.dumps({"enabled": enabled}),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def patch_trust_framework_bundle_config(
+            self, bundle_id: str, body: dict
+    ) -> requests.Response:
+        """PATCH /admin/trust-frameworks/bundles/{bundleId} with a merge-patch body.
+
+        Body is a free-form object whose recognised keys are clientType, serviceUrl,
+        compliancePath, apiVersion, timeoutSeconds, trustAnchorUrl. A key set to JSON
+        null clears the corresponding override; a key set to a value overrides the
+        bundle YAML for that field; an omitted key leaves the existing state untouched.
+        """
+        self._update_header(content_type=MERGE_PATCH_JSON)
+        return self.http.patch(
+            url=f"{self.host}admin/trust-frameworks/bundles/{bundle_id}",
+            data=json.dumps(body),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def delete_trust_framework_bundle_config(
+            self, bundle_id: str
+    ) -> requests.Response:
+        """DELETE /admin/trust-frameworks/bundles/{bundleId} — clears all overrides."""
+        self._update_header()
+        return self.http.delete(
+            url=f"{self.host}admin/trust-frameworks/bundles/{bundle_id}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS
+        )
+
+    def get_admin_trust_frameworks(self) -> requests.Response:
+        """GET /admin/trust-frameworks"""
+        self._update_header()
+        return self.http.get(
+            url=f"{self.host}admin/trust-frameworks",
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
