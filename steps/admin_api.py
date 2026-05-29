@@ -241,41 +241,41 @@ def response_items_has_at_least(context: ContextType, count: int) -> None:
         f"Expected at least {count} items, got {len(items)}. Body: {body}"
 
 
-@then('response items contributions contain "{role_name}"')
-def response_items_contributions_contain(context: ContextType, role_name: str) -> None:
+@then('response items contributions contain "{base_class_name}"')
+def response_items_contributions_contain(context: ContextType, base_class_name: str) -> None:
     body = context.requests_response.json()
     items = body.get("items", [])
-    matching = [it for it in items if role_name in (it.get("contributions") or {})]
+    matching = [it for it in items if base_class_name in (it.get("contributions") or {})]
     assert matching, \
-        f"No item has contribution for role '{role_name}'. Items: {items}"
+        f"No item has contribution for base class '{base_class_name}'. Items: {items}"
 
 
 
 
 # ---------------------------------------------------------------------------
-# Trust Framework Role Toggle
+# Trust Framework Base-class toggle
 # ---------------------------------------------------------------------------
 
-@given('role {role_name} of bundle {bundle_id} is disabled')
-def disable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
-    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=False)
+@given('base class {base_class_name} of bundle {bundle_id} is disabled')
+def disable_trust_framework_base_class(context: ContextType, base_class_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_base_class_enabled(bundle_id, base_class_name, enabled=False)
     assert resp.status_code == 200, \
-        f"Failed to disable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+        f"Failed to disable base class {bundle_id}/{base_class_name}: {resp.status_code} {resp.text}"
     # Register for automatic cleanup in after_scenario so the state is restored
     # even when a subsequent assertion fails (cleanup-on-failure safety).
-    if not hasattr(context, "disabled_roles"):
-        context.disabled_roles = []
-    entry = (bundle_id, role_name)
-    if entry not in context.disabled_roles:
-        context.disabled_roles.append(entry)
+    if not hasattr(context, "disabled_base_classes"):
+        context.disabled_base_classes = []
+    entry = (bundle_id, base_class_name)
+    if entry not in context.disabled_base_classes:
+        context.disabled_base_classes.append(entry)
 
 
-@given('role {role_name} of bundle {bundle_id} is re-enabled')
-@then('role {role_name} of bundle {bundle_id} is re-enabled')
-def reenable_trust_framework_role(context: ContextType, role_name: str, bundle_id: str) -> None:
-    resp = context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=True)
+@given('base class {base_class_name} of bundle {bundle_id} is re-enabled')
+@then('base class {base_class_name} of bundle {bundle_id} is re-enabled')
+def reenable_trust_framework_base_class(context: ContextType, base_class_name: str, bundle_id: str) -> None:
+    resp = context.fc_server.set_trust_framework_base_class_enabled(bundle_id, base_class_name, enabled=True)
     assert resp.status_code == 200, \
-        f"Failed to re-enable role {bundle_id}/{role_name}: {resp.status_code} {resp.text}"
+        f"Failed to re-enable base class {bundle_id}/{base_class_name}: {resp.status_code} {resp.text}"
 
 
 @when("request admin trust frameworks")
@@ -284,9 +284,9 @@ def request_admin_trust_frameworks(context: ContextType) -> None:
     context.requests_response = context.fc_server.get_admin_trust_frameworks()
 
 
-@then('admin trust frameworks response includes bundle "{bundle_id}" with role "{role_name}" enabled')
-def admin_trust_frameworks_bundle_role_enabled(
-    context: ContextType, bundle_id: str, role_name: str
+@then('admin trust frameworks response includes bundle "{bundle_id}" with base class "{base_class_name}" enabled')
+def admin_trust_frameworks_bundle_base_class_enabled(
+    context: ContextType, bundle_id: str, base_class_name: str
 ) -> None:
     body = context.requests_response.json()
     assert isinstance(body, list), f"Expected list, got {type(body).__name__}: {body}"
@@ -301,11 +301,11 @@ def admin_trust_frameworks_bundle_role_enabled(
             break
     assert bundle is not None, \
         f"Bundle '{bundle_id}' not found in admin trust-frameworks response: {body}"
-    roles = bundle.get("roles", {})
-    assert role_name in roles, \
-        f"Role '{role_name}' not found in bundle '{bundle_id}' roles: {roles}"
-    assert roles[role_name] is True, \
-        f"Expected role '{bundle_id}/{role_name}' to be enabled (true), got: {roles[role_name]}"
+    base_classes = bundle.get("baseClasses", {})
+    assert base_class_name in base_classes, \
+        f"Base class '{base_class_name}' not found in bundle '{bundle_id}' base classes: {base_classes}"
+    assert base_classes[base_class_name] is True, \
+        f"Expected base class '{bundle_id}/{base_class_name}' to be enabled (true), got: {base_classes[base_class_name]}"
 
 
 # ---------------------------------------------------------------------------

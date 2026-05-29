@@ -37,20 +37,20 @@ def after_scenario(context, scenario) -> None:
     except (AttributeError, KeyError):
         pass
 
-    # Restore any role-toggle states that were disabled during the scenario.
-    # This runs unconditionally so that a failed assertion cannot leave a role disabled
-    # and poison subsequent scenarios (@domain.admin role-toggle tests).
+    # Restore any base-class-toggle states that were disabled during the scenario.
+    # This runs unconditionally so that a failed assertion cannot leave a base class
+    # disabled and poison subsequent scenarios (@domain.admin base-class-toggle tests).
     try:
-        disabled_roles = list(context.disabled_roles)
+        disabled_base_classes = list(context.disabled_base_classes)
     except AttributeError:
-        disabled_roles = []
-    for bundle_id, role_name in disabled_roles:
+        disabled_base_classes = []
+    for bundle_id, base_class_name in disabled_base_classes:
         try:
-            context.fc_server.set_trust_framework_role_enabled(bundle_id, role_name, enabled=True)
+            context.fc_server.set_trust_framework_base_class_enabled(bundle_id, base_class_name, enabled=True)
         except Exception:  # noqa: BLE001
             pass
     try:
-        context.disabled_roles = []
+        context.disabled_base_classes = []
     except AttributeError:
         pass
 
