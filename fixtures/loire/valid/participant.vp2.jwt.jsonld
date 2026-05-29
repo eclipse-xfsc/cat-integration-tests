@@ -4,5 +4,11 @@
   "@context": ["https://www.w3.org/ns/credentials/v2"],
   "id": "urn:uuid:jwt-bdd-vp2-1",
   "type": ["VerifiablePresentation"],
-  "verifiableCredential": ["{{VC_JWT}}"]
+  "verifiableCredential": [
+    {
+      "@context": "https://www.w3.org/ns/credentials/v2",
+      "id": "data:application/vc+ld+json+jwt,{{VC_JWT}}",
+      "type": "EnvelopedVerifiableCredential"
+    }
+  ]
 }

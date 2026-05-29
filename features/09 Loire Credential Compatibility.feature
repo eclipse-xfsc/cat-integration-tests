@@ -81,7 +81,7 @@ Feature: Loire Credential Compatibility
   Scenario: Loire VC 2.0 JSON-LD VP without JWT envelope is rejected in strict mode
     # Plain JSON-LD has no JWS proof — signature verification is impossible without a JWT.
     # Strict mode must reject rather than silently skip signature checks.
-    When add credential from fixture "loire/valid/participant.vp2.jsonld"
+    When add credential from fixture "valid/inline-vp/participant-inline.vp.jsonld"
     Then get http 422:Unprocessable Entity code
 
   # --- Gaia-X ontology sub-type acceptance ---

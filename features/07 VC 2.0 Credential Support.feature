@@ -24,8 +24,8 @@ Feature: VC 2.0 Credential Support
   @smoke @cfg.default
   Scenario: Upload a VC 2.0 credential wrapped in a Verifiable Presentation
     # JSON-LD VP wrapping an inline VC 2.0 credential with gx:LegalPerson type.
-    Given credential from fixture "loire/valid/participant.vp2.jsonld" is not uploaded
-    When add credential from fixture "loire/valid/participant.vp2.jsonld"
+    Given credential from fixture "valid/inline-vp/participant-inline.vp.jsonld" is not uploaded
+    When add credential from fixture "valid/inline-vp/participant-inline.vp.jsonld"
     Then get http 201:Created code
 
   @cfg.default
@@ -38,8 +38,8 @@ Feature: VC 2.0 Credential Support
   @cfg.default
   Scenario: JSON-LD body submitted with JWT content-type is rejected
     # application/vc+jwt expects a JWT compact serialization, not a JSON-LD document.
-    Given credential from fixture "loire/valid/participant.vp2.jsonld" is not uploaded
-    When add credential from fixture "loire/valid/participant.vp2.jsonld" with content-type "application/vc+jwt"
+    Given credential from fixture "valid/inline-vp/participant-inline.vp.jsonld" is not uploaded
+    When add credential from fixture "valid/inline-vp/participant-inline.vp.jsonld" with content-type "application/vc+jwt"
     Then get http 400:Bad Request code
 
   @cfg.default
