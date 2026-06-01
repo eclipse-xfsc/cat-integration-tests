@@ -53,11 +53,11 @@ Feature: Credential Upload
 
   # --- CAT-FR-SF-04: No automatic SHACL validation on upload ---
 
-  @req.CAT-FR-SF-04 @cfg.default
+  @req.CAT-FR-SF-04 @cfg.default @cfg.strict
   Scenario: Upload credential that violates stored SHACL shape succeeds
-    # Schema validation is disabled by default (verifySchema=false).
+    # No automatic SHACL validation on upload — schema validation is on-demand only via POST /assets/validate (CAT-FR-CO-05).
     # A SHACL shape requiring schema:legalName is in the schema store, but the
-    # uploaded participant has no legalName. Upload must still return 201.
+    # uploaded participant has no legalName. Upload must still return 201 regardless of config.
     Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
       And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
@@ -82,18 +82,9 @@ Feature: Credential Upload
     Then get http 201:Created code
       And response has non-empty validatorDids
 
-  @req.CAT-FR-SF-04 @cfg.strict
-  Scenario: Upload credential that violates SHACL shape is rejected under strict config
-    # With schema=true (strict config), SHACL validation IS enforced on upload.
-    # The participant missing gx:legalName is rejected by the stored SHACL shape.
-    Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
-    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
-    Then get http 422:Unprocessable Entity code
-      And uploaded schemas are cleaned up
-
   @req.CAT-FR-SF-04 @cfg.default
-  Scenario: Verification passes for SHACL-violating credential when schema check disabled
-    # The /verification endpoint skips SHACL when verifySchema=false.
+  Scenario: Verification passes for SHACL-violating credential
+    # The /verification endpoint never runs SHACL — schema validation is on-demand only.
     # A credential missing SHACL-required fields still passes verification.
     Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
     When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
