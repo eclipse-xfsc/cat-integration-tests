@@ -51,15 +51,13 @@ Feature: Admin API — Runtime Configuration
       And response body contains "module_disabled:SHACL"
       And SHACL schema module is re-enabled
 
-  @baseline @cfg.default
+  @baseline @cfg.strict
   Scenario: OWL module disabled — custom-subclass credential fails role resolution with 400
-    # resolveRole skips the rdfs:subClassOf+ walk when OWL is off. With verifySemantics
-    # off (default config), the request reaches the unconditional null-role check in
-    # VerificationServiceImpl, which rejects with 400 "not resolvable". In strict
-    # config the same custom-subclass credential is rejected one layer earlier with
-    # 422 "Semantic Error" (hasClasses() = false because the role resolves to UNKNOWN).
-    # Both outcomes demonstrate the OWL toggle's effect; this scenario pins the 400
-    # contract observable in default config.
+    # resolveRole skips the rdfs:subClassOf+ walk when OWL is off, so the role resolves
+    # to null. Under strict config (require-base-class=true), the null-role check in
+    # VerificationServiceImpl rejects with 400 "not resolvable". The default-config
+    # counterpart accepts the same credential (see next scenario) because
+    # trust-framework base-class compliance is opt-in by default.
     Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
       And OWL schema module is disabled
     When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
@@ -67,6 +65,18 @@ Feature: Admin API — Runtime Configuration
       And response body contains "not resolvable"
       And OWL schema module is re-enabled
       And uploaded schemas are cleaned up
+
+  @baseline @cfg.default @req.CAT-FR-CO-01
+  Scenario: OWL module disabled — custom-subclass credential accepted under default config
+    # Counterpart to the strict scenario above. Default config has require-base-class=false,
+    # so a credential whose @type only resolves through the OWL subclass walk is accepted
+    # even when the OWL module is off and the role cannot be resolved.
+    Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
+    And OWL schema module is disabled
+    When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+    And OWL schema module is re-enabled
+    And uploaded schemas are cleaned up
 
   @baseline
   Scenario: OWL module enabled — custom-subclass credential resolves via subclass walk
