@@ -31,7 +31,8 @@ The tests authenticate via **Resource Owner Password Grant** (not client credent
 ### 1. Create a test user
 
 1. Open Keycloak Admin Console: <http://key-server:8080/admin/> (admin / admin for docker-compose)
-2. Select the **gaia-x** realm
+2. Select the realm matching `CAT_KEYCLOAK_REALM` in `env.sh` (default: `federated-catalogue-realm`; legacy QA:
+   `gaia-x`)
 3. Go to **Users** > **Add user**
 4. Set username to `admin` (or whatever `CAT_TEST_USER` is set to in `env.sh`)
 5. Save
