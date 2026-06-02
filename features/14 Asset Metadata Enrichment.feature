@@ -31,9 +31,15 @@ Feature: Asset Metadata Enrichment
     Then get http 200:Success code
      And response content-type is "text/plain"
      And response file size matches saved file size
-    When execute openCypher query
+    When execute SPARQL query
       """
-      MATCH (n:ContractTemplate) RETURN n.uri LIMIT 50
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      PREFIX ex: <http://example.org/>
+      SELECT ?asset WHERE {
+        <<(?asset rdf:type ex:ContractTemplate)>>
+          <https://www.w3.org/2018/credentials#credentialSubject> ?subject .
+      }
+      LIMIT 50
       """
     Then get http 200:Success code
      And query result contains saved asset id
@@ -67,15 +73,25 @@ Feature: Asset Metadata Enrichment
     Then get http 200:Success code
     When enrich saved asset with fixture "valid/enrichment/metadata-final.jsonld"
     Then get http 200:Success code
-    When execute openCypher query
+    When execute SPARQL query
       """
-      MATCH (n {title: 'Final v1'}) RETURN n.uri LIMIT 50
+      PREFIX dct: <http://purl.org/dc/terms/>
+      SELECT ?asset WHERE {
+        <<(?asset dct:title "Final v1")>>
+          <https://www.w3.org/2018/credentials#credentialSubject> ?subject .
+      }
+      LIMIT 50
       """
     Then get http 200:Success code
      And query result contains saved asset id
-    When execute openCypher query
+    When execute SPARQL query
       """
-      MATCH (n {title: 'Draft v1'}) RETURN n.uri LIMIT 50
+      PREFIX dct: <http://purl.org/dc/terms/>
+      SELECT ?asset WHERE {
+        <<(?asset dct:title "Draft v1")>>
+          <https://www.w3.org/2018/credentials#credentialSubject> ?subject .
+      }
+      LIMIT 50
       """
     Then get http 200:Success code
      And query result does not contain saved asset id

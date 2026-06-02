@@ -419,10 +419,14 @@ class Server(BaseServiceKeycloak):
 
     def switch_graph_database(self, backend: str) -> requests.Response:
         """POST /admin/graph-database/switch — backend ∈ {NEO4J, FUSEKI, NONE}"""
+        # Force Content-Type: requests' json= will not override a Content-Type already left on
+        # the shared session by a prior request (e.g. an application/vp+jwt credential upload),
+        # which would otherwise make this JSON POST 415.
         self._update_header()
         return self.http.post(
             url=f"{self.host}admin/graph-database/switch",
             json={"backend": backend},
+            headers={"Content-Type": "application/json"},
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
@@ -432,6 +436,7 @@ class Server(BaseServiceKeycloak):
         return self.http.post(
             url=f"{self.host}admin/graph/rebuild",
             json={},
+            headers={"Content-Type": "application/json"},
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 

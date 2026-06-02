@@ -31,7 +31,8 @@ The tests authenticate via **Resource Owner Password Grant** (not client credent
 ### 1. Create a test user
 
 1. Open Keycloak Admin Console: <http://key-server:8080/admin/> (admin / admin for docker-compose)
-2. Select the **gaia-x** realm
+2. Select the realm matching `CAT_KEYCLOAK_REALM` in `env.sh` (default: `federated-catalogue-realm`; legacy QA:
+   `gaia-x`)
 3. Go to **Users** > **Add user**
 4. Set username to `admin` (or whatever `CAT_TEST_USER` is set to in `env.sh`)
 5. Save
@@ -176,6 +177,22 @@ They must be triggered explicitly by tag.
 |-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@uses.compliance-mock` | WireMock instance at `CAT_WIREMOCK_HOST`; FC server's `mock-2026.service_url` pointing at it                                                                                                         |
 | `@uses.live-gxdch`      | Live internet access to `https://compliance.gaia-x.eu/v2`; `gaia-x` trust framework family enabled; participant VP fixture signed by a key whose `x5u` resolves to a GXDCH-trusted certificate chain |
+
+#### Running `@uses.compliance-mock` scenarios
+
+The WireMock mock runs **in the cluster** (Helm `complianceMock.enabled`). The FC calls its stub
+endpoints in-cluster; the **test process** configures the mock and reads its call journal via
+WireMock's `/__admin` API, so the test needs to reach it. For a local run against the QA cluster,
+port-forward the mock — `env.sh` (`CAT_ENV=qa`) already points `CAT_WIREMOCK_HOST` at the local port:
+
+```bash
+kubectl port-forward -n federated-catalogue svc/fc-compliance-mock 8089:8080 &
+source env.sh   # sets CAT_WIREMOCK_HOST=http://localhost:8089
+behave "features/16 Compliance Check.feature"
+```
+
+For CI, run the suite as an in-cluster Job so it reaches `/__admin` over cluster DNS — no
+port-forward or public exposure needed.
 
 #### Running `@uses.live-gxdch` scenarios
 

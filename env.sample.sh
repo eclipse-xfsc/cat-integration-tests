@@ -46,7 +46,8 @@ case ${CAT_ENV} in
     #   Add `127.0.0.1 key-server` to /etc/hosts
     export CAT_FC_HOST="http://localhost:8081"
     export CAT_KEYCLOAK_URL="http://key-server:8080"
-    export CAT_KEYCLOAK_REALM="gaia-x"
+    # Must match KEYCLOAK_REALM in federated-catalogue/docker/dev.env (default: federated-catalogue-realm)
+    export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
     export CAT_KEYCLOAK_CLIENT_SECRET=""
     export CAT_KEYCLOAK_SCOPE="openid"
@@ -61,7 +62,8 @@ case ${CAT_ENV} in
     # Adjust host/port to match your ingress or NodePort setup
     export CAT_FC_HOST="http://localhost:30081"
     export CAT_KEYCLOAK_URL="http://localhost:30080"
-    export CAT_KEYCLOAK_REALM="gaia-x"
+    # Must match the realm configured in the Helm chart (default: federated-catalogue-realm)
+    export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
     export CAT_KEYCLOAK_CLIENT_SECRET=""
     export CAT_KEYCLOAK_SCOPE="openid"
@@ -75,13 +77,17 @@ case ${CAT_ENV} in
     # Set these to your actual QA endpoints and credentials
     export CAT_FC_HOST="https://fc-server.qa.example.org"
     export CAT_KEYCLOAK_URL="https://keycloak.qa.example.org"
-    export CAT_KEYCLOAK_REALM="gaia-x"
+    # Existing QA stages with a pre-existing gaia-x realm should keep "gaia-x" here.
+    export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
     export CAT_KEYCLOAK_CLIENT_SECRET="your-qa-secret-here"
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="qa-test-user"
     export CAT_TEST_PASSWORD="qa-test-password"
-    export CAT_WIREMOCK_HOST="https://wiremock.qa.example.org"  # TODO: set real QA WireMock host
+    # Compliance mock for @uses.compliance-mock scenarios. If the mock runs in-cluster
+    # (Helm complianceMock.enabled), port-forward it and point here at the local port:
+    #   kubectl port-forward -n federated-catalogue svc/fc-compliance-mock 8089:8080
+    export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
 
   *)
