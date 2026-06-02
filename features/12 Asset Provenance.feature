@@ -105,6 +105,67 @@ Feature: Asset Provenance and Versioning
     When list provenance credentials for saved asset
     Then get http 404:Not Found code
 
+  @domain.asset
+  Scenario: Activity-centric provenance VC is accepted
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add activity-centric provenance credential for saved asset at version 1 with activity IRI "urn:activity:test-1" and predicates "prov:generated,prov:wasAssociatedWith"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 1 provenance credentials
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  @domain.asset
+  Scenario: Multiple activity-centric provenance credentials on the same asset version
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add activity-centric provenance credential for saved asset at version 1 with activity IRI "urn:activity:multi-a" and predicates "prov:generated,prov:wasAssociatedWith"
+    Then get http 201:Created code
+    When add activity-centric provenance credential for saved asset at version 1 with activity IRI "urn:activity:multi-b" and predicates "prov:generated,prov:wasInformedBy"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 2 provenance credentials
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  @domain.asset
+  Scenario: Cascade-delete by asset IRI removes activity-centric provenance across versions
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When update saved asset with fixture "valid/version-control/gaiax-participant-v2.vp.jsonld"
+    Then get http 200:Success code
+    When add activity-centric provenance credential for saved asset at version 1 with activity IRI "urn:activity:cascade-v1" and predicates "prov:generated"
+    Then get http 201:Created code
+    When add activity-centric provenance credential for saved asset at version 2 with activity IRI "urn:activity:cascade-v2" and predicates "prov:generated"
+    Then get http 201:Created code
+    When cascade-delete saved asset by id
+    Then get http 204:No Content code
+    When cascade-delete saved asset by id
+    Then get http 204:No Content code
+    When list provenance credentials for saved asset
+    Then get http 404:Not Found code
+
+  @domain.asset
+  Scenario: SPARQL-Star discovery query finds asset credential subject via reification
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When execute SPARQL query
+      """
+      PREFIX cred: <https://www.w3.org/2018/credentials#>
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      PREFIX gx: <https://w3id.org/gaia-x/2511#>
+      SELECT ?subject WHERE {
+        <<(?subject rdf:type gx:LegalPerson)>> cred:credentialSubject ?cs .
+      }
+      LIMIT 10
+      """
+    Then get http 200:Success code
+     And query result contains "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd"
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
   Scenario: Attaching a human-readable companion does not advance the asset version counter
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
     Then get http 201:Created code

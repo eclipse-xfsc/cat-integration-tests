@@ -59,6 +59,54 @@ def add_provenance_for_saved_asset_multi(context: ContextType, version: int, pre
     )
 
 
+def _build_activity_centric_provenance_vc(
+    asset_id: str, version: int, activity_iri: str, predicates: list
+) -> str:
+    """Build an activity-centric VC where credentialSubject.id is the activity IRI.
+
+    For ``prov:generated`` and ``prov:used`` the object must be the asset version IRI
+    ``{asset_id}:v{version}`` so the catalogue can link the activity to the asset.
+    All other PROV-O predicates are assigned distinct placeholder IRIs.
+    """
+    subject: dict = {"id": activity_iri}
+    asset_version_iri = f"{asset_id}:v{version}"
+    for idx, predicate in enumerate(predicates):
+        if predicate in ("prov:generated", "prov:used"):
+            subject[predicate] = asset_version_iri
+        else:
+            local_name = predicate.split(":")[-1]
+            subject[predicate] = f"{_PROV_VC_ISSUER}:{local_name}-{idx}"
+    return json.dumps({
+        "@context": ["https://www.w3.org/ns/credentials/v2"],
+        "type": ["VerifiableCredential"],
+        "id": f"urn:uuid:{uuid.uuid4()}",
+        "issuer": _PROV_VC_ISSUER,
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": subject,
+    })
+
+
+@when('add activity-centric provenance credential for saved asset at version {version:d} with activity IRI "{activity_iri}" and predicates "{predicates_csv}"')
+def add_activity_centric_provenance(
+    context: ContextType, version: int, activity_iri: str, predicates_csv: str
+) -> None:
+    """Attach an activity-centric provenance VC.
+
+    The credentialSubject.id is the activity IRI itself; the predicates listed must
+    include ``prov:generated`` or ``prov:used`` pointing at the asset version IRI so
+    the server can link the activity back to the asset.
+    """
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    predicates = [p.strip() for p in predicates_csv.split(",") if p.strip()]
+    assert predicates, "predicates list must not be empty"
+    payload = _build_activity_centric_provenance_vc(
+        context.last_asset_id, version, activity_iri, predicates
+    )
+    context.requests_response = context.fc_server.add_provenance_credential(
+        context.last_asset_id, payload, version=version
+    )
+
+
 @when('cascade-delete saved asset by id')
 def cascade_delete_saved_asset_by_id(context: ContextType) -> None:
     """Invoke DELETE /assets/by-id/{id} — idempotent cascade by asset IRI."""
