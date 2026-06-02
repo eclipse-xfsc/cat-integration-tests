@@ -11,6 +11,40 @@ class ContextType:
 
 
 _PROV_VC_ISSUER = "did:web:did-server"
+_PROV_NS = "http://www.w3.org/ns/prov#"
+
+
+def _expand_prov_predicate(predicate: str) -> str:
+    """Return the absolute IRI for a compact ``prov:foo`` predicate; pass through full IRIs unchanged."""
+    if predicate.startswith("prov:"):
+        return _PROV_NS + predicate.split(":", 1)[1]
+    return predicate
+
+
+_CREDENTIAL_SUBJECT_PROP = "https://www.w3.org/2018/credentials#credentialSubject"
+
+
+def _projected_graph_has_triple(context, subject_iri: str, predicate: str):
+    """Run a SELECT against the SPARQL-Star reified projection and report whether the triple exists.
+
+    The catalogue persists claims as reified annotations:
+    ``<<(<subject> <predicate> <object>)>> cred:credentialSubject <subject>``.
+    A plain SELECT on the bare triple would miss them, so the WHERE clause matches the
+    annotation pattern that the graph store actually writes.
+    """
+    sparql = (
+        f"SELECT ?o WHERE {{ "
+        f"<<(<{subject_iri}> <{_expand_prov_predicate(predicate)}> ?o)>> "
+        f"<{_CREDENTIAL_SUBJECT_PROP}> ?cs . "
+        f"}} LIMIT 1"
+    )
+    response = context.fc_server.query(sparql, query_language="sparql")
+    assert response.status_code == 200, (
+        f"SPARQL projection check failed with HTTP {response.status_code}: {response.text}"
+    )
+    body = response.json()
+    items = body.get("items") or body.get("results", {}).get("bindings", [])
+    return bool(items), body
 
 
 def _build_provenance_vc(asset_id: str, version: int, predicate: str) -> str:
@@ -233,3 +267,34 @@ def all_provenance_verification_results_are_valid(context: ContextType) -> None:
     body = context.requests_response.json()
     is_valid = body.get("isValid")
     assert is_valid is True, f"Expected aggregated isValid=true, got: {body}"
+
+
+@then('projected graph contains predicate "{predicate}" for saved asset at version {version:d}')
+def projected_graph_contains_predicate_for_saved_asset_version(
+    context: ContextType, predicate: str, version: int
+) -> None:
+    """Assert the triple `<{asset_id}:v{version}> <{predicate-iri}> ?o` is reachable via SPARQL.
+
+    Guards against the server accepting a provenance VC but silently dropping the predicate during
+    projection — the totalCount assertion alone cannot detect that regression.
+    """
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    subject = f"{context.last_asset_id}:v{version}"
+    found, body = _projected_graph_has_triple(context, subject, predicate)
+    assert found, (
+        f"Predicate '{predicate}' was not projected for asset version <{subject}>; query response={body}"
+    )
+
+
+@then('projected graph contains predicate "{predicate}" for activity IRI "{activity_iri}"')
+def projected_graph_contains_predicate_for_activity_iri(
+    context: ContextType, predicate: str, activity_iri: str
+) -> None:
+    """Assert the triple `<{activity_iri}> <{predicate-iri}> ?o` is reachable via SPARQL.
+
+    Used by activity-centric scenarios where the credentialSubject.id is the activity itself.
+    """
+    found, body = _projected_graph_has_triple(context, activity_iri, predicate)
+    assert found, (
+        f"Predicate '{predicate}' was not projected for activity <{activity_iri}>; query response={body}"
+    )

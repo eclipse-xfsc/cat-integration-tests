@@ -73,6 +73,7 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When list provenance credentials for saved asset
     Then response has 1 provenance credentials
+     And projected graph contains predicate "<predicate>" for saved asset at version 1
      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
 
     Examples:
@@ -90,6 +91,9 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When list provenance credentials for saved asset
     Then response has 1 provenance credentials
+     And projected graph contains predicate "prov:wasGeneratedBy" for saved asset at version 1
+     And projected graph contains predicate "prov:wasAssociatedWith" for saved asset at version 1
+     And projected graph contains predicate "prov:actedOnBehalfOf" for saved asset at version 1
      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
 
   Scenario: Cascade-delete by asset IRI is idempotent and clears every version
@@ -114,6 +118,8 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When list provenance credentials for saved asset
     Then response has 1 provenance credentials
+     And projected graph contains predicate "prov:generated" for activity IRI "urn:activity:test-1"
+     And projected graph contains predicate "prov:wasAssociatedWith" for activity IRI "urn:activity:test-1"
      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
 
   @domain.asset
@@ -127,6 +133,8 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When list provenance credentials for saved asset
     Then response has 2 provenance credentials
+     And projected graph contains predicate "prov:generated" for activity IRI "urn:activity:multi-a"
+     And projected graph contains predicate "prov:generated" for activity IRI "urn:activity:multi-b"
      And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
 
   @domain.asset
