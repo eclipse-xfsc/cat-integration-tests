@@ -64,3 +64,55 @@ Feature: Asset Provenance and Versioning
     Then get http 200:Success code
     When list provenance credentials for saved asset
     Then get http 404:Not Found code
+
+  Scenario Outline: Activity- and agent-side PROV-O predicates are accepted on credentialSubject
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add provenance credential for saved asset at version 1 with predicate "<predicate>"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 1 provenance credentials
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+    Examples:
+      | predicate              |
+      | prov:generated         |
+      | prov:used              |
+      | prov:wasAssociatedWith |
+      | prov:actedOnBehalfOf   |
+
+  Scenario: Multiple PROV-O predicates on the same credentialSubject are all projected
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add provenance credential for saved asset at version 1 with predicates "prov:wasGeneratedBy,prov:wasAssociatedWith,prov:actedOnBehalfOf"
+    Then get http 201:Created code
+    When list provenance credentials for saved asset
+    Then response has 1 provenance credentials
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
+
+  Scenario: Cascade-delete by asset IRI is idempotent and clears every version
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When add provenance credential for saved asset at version 1 with predicate "prov:wasGeneratedBy"
+    Then get http 201:Created code
+    When cascade-delete saved asset by id
+    Then get http 204:No Content code
+    When cascade-delete saved asset by id
+    Then get http 204:No Content code
+    When list provenance credentials for saved asset
+    Then get http 404:Not Found code
+
+  Scenario: Attaching a human-readable companion does not advance the asset version counter
+    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
+    Then get http 201:Created code
+     And save asset id from last response
+    When get saved asset versions
+    Then save asset version count and latest version ordinal
+    When attach human-readable companion "valid/dcs-templates/contract-template-v1.md" to saved asset
+    Then get http 201:Created code
+    When get saved asset versions
+    Then total version count is unchanged
+     And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
