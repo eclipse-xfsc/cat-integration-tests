@@ -471,6 +471,39 @@ def upload_human_readable_for_saved_asset(context: ContextType, fixture_path: st
     )
 
 
+# File-extension → MIME type mapping for the "attach human-readable companion" shorthand step.
+# Keep this list narrow — the catalogue's own content-type allowlist on the human-readable endpoint
+# is the binding contract; extending it here without extending it there only hides upload rejections.
+_HR_COMPANION_CONTENT_TYPE_BY_SUFFIX = {
+    ".md": "text/markdown",
+    ".txt": "text/plain",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".yaml": "text/yaml",
+    ".yml": "text/yaml",
+}
+
+
+@when('attach human-readable companion "{fixture_path}" to saved asset')
+def attach_human_readable_companion_to_saved_asset(context: ContextType, fixture_path: str) -> None:
+    """Upload a human-readable companion file, inferring the content type from the fixture's suffix."""
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    path = FIXTURES_DIR / fixture_path
+    suffix = path.suffix.lower()
+    content_type = _HR_COMPANION_CONTENT_TYPE_BY_SUFFIX.get(suffix)
+    assert content_type, (
+        f"Unsupported companion suffix '{suffix}' — extend "
+        f"_HR_COMPANION_CONTENT_TYPE_BY_SUFFIX or use the explicit-content-type step instead"
+    )
+    file_content = path.read_bytes()
+    context.requests_response = context.fc_server.upload_human_readable(
+        mr_id=context.last_asset_id,
+        file_content=file_content,
+        content_type=content_type,
+        filename=path.name,
+    )
+
+
 @then('save human-readable id from last response')
 def save_human_readable_id_from_last_response(context: ContextType) -> None:
     response_json = context.requests_response.json()

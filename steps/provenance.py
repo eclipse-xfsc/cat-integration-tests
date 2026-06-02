@@ -15,16 +15,26 @@ _PROV_VC_ISSUER = "did:web:did-server"
 
 def _build_provenance_vc(asset_id: str, version: int, predicate: str) -> str:
     """Build a minimal VC 2.0 provenance payload for the given asset version and PROV-O predicate."""
+    return _build_provenance_vc_multi(asset_id, version, [predicate])
+
+
+def _build_provenance_vc_multi(asset_id: str, version: int, predicates: list) -> str:
+    """Build a VC 2.0 provenance payload that declares multiple PROV-O predicates on the same subject.
+
+    Each predicate is assigned a distinct IRI object so that the projected graph carries a star of
+    relations rather than a single repeated edge.
+    """
+    subject = {"id": f"{asset_id}:v{version}"}
+    for idx, predicate in enumerate(predicates):
+        local_name = predicate.split(":")[-1]
+        subject[predicate] = f"{_PROV_VC_ISSUER}:{local_name}-{idx}"
     return json.dumps({
         "@context": ["https://www.w3.org/ns/credentials/v2"],
         "type": ["VerifiableCredential"],
         "id": f"urn:uuid:{uuid.uuid4()}",
         "issuer": _PROV_VC_ISSUER,
         "validFrom": "2026-01-01T00:00:00Z",
-        "credentialSubject": {
-            "id": f"{asset_id}:v{version}",
-            predicate: f"{_PROV_VC_ISSUER}:activity",
-        },
+        "credentialSubject": subject,
     })
 
 
@@ -35,6 +45,25 @@ def add_provenance_for_saved_asset(context: ContextType, version: int, predicate
     context.requests_response = context.fc_server.add_provenance_credential(
         context.last_asset_id, payload, version=version
     )
+
+
+@when('add provenance credential for saved asset at version {version:d} with predicates "{predicates_csv}"')
+def add_provenance_for_saved_asset_multi(context: ContextType, version: int, predicates_csv: str) -> None:
+    """Add a single provenance credential whose credentialSubject carries several PROV-O predicates."""
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    predicates = [p.strip() for p in predicates_csv.split(",") if p.strip()]
+    assert predicates, "predicates list must not be empty"
+    payload = _build_provenance_vc_multi(context.last_asset_id, version, predicates)
+    context.requests_response = context.fc_server.add_provenance_credential(
+        context.last_asset_id, payload, version=version
+    )
+
+
+@when('cascade-delete saved asset by id')
+def cascade_delete_saved_asset_by_id(context: ContextType) -> None:
+    """Invoke DELETE /assets/by-id/{id} — idempotent cascade by asset IRI."""
+    assert hasattr(context, "last_asset_id"), "No saved asset id — call 'save asset id from last response' first"
+    context.requests_response = context.fc_server.delete_asset_by_id(context.last_asset_id)
 
 
 @then('save provenance credential id from last response')

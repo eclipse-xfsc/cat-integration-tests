@@ -189,6 +189,14 @@ class Server(BaseServiceKeycloak):
             timeout=CONNECT_TIMEOUT_IN_SECONDS
         )
 
+    def delete_asset_by_id(self, asset_id: str) -> requests.Response:
+        """DELETE /assets/by-id/{id} — idempotent cascade by asset IRI."""
+        self._update_header()
+        return self.http.delete(
+            url=f"{self.host}{self.ASSET_PATH}/by-id/{quote(asset_id, safe='')}",
+            timeout=CONNECT_TIMEOUT_IN_SECONDS,
+        )
+
     def revoke_asset(self, asset_hash: str) -> requests.Response:
         """POST /assets/{asset_hash}/revoke"""
         self._update_header()
