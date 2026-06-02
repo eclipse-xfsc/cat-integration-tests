@@ -111,7 +111,7 @@ Feature: Asset Provenance and Versioning
      And save asset id from last response
     When get saved asset versions
     Then save asset version count and latest version ordinal
-    When attach human-readable companion "valid/dcs-templates/contract-template-v1.md" to saved asset
+    When attach human-readable companion "valid/dcs-templates/contract-template-v1.txt" to saved asset
     Then get http 201:Created code
     When get saved asset versions
     Then total version count is unchanged
