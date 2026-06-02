@@ -1,9 +1,28 @@
+import base64
+import json
+import time
+
 from behave import given, when, then
 
 from eu.xfsc.bdd.core.server.keycloak import Token
 from eu.xfsc.bdd.cat.components.keycloak import CatKeycloakServer
 
 from eu.xfsc.bdd.cat import env
+
+
+def _token_expired(token: str, skew_seconds: int = 30) -> bool:
+    """True if the JWT is missing, unparseable, or expires within skew_seconds.
+
+    Compares the JWT `exp` (UTC epoch) against time.time() (UTC epoch), so it is
+    timezone-independent.
+    """
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        exp = json.loads(base64.urlsafe_b64decode(payload)).get("exp")
+    except (AttributeError, IndexError, ValueError):
+        return True
+    return exp is None or exp - time.time() <= skew_seconds
 
 
 class ContextType:
@@ -37,7 +56,20 @@ def save(context: ContextType) -> None:
 
 @given("saved Keycloak token")
 def load(context: ContextType) -> None:
-    context.keycloak.last_token = context.FileToken.load()
+    """Load the shared cached token, refreshing it if missing or (near-)expired.
+
+    The token is cached to a file so scenarios share one token instead of
+    re-authenticating every time. A full suite run can outlive the token's
+    lifespan (~15 min), so refresh-on-expiry keeps later scenarios from 401ing.
+    """
+    try:
+        token = context.FileToken.load()
+    except FileNotFoundError:
+        token = ""
+    if _token_expired(token):
+        token = context.keycloak.fetch_token()
+        context.FileToken.dump(token)
+    context.keycloak.last_token = token
 
 
 @given('Keycloak token for user "{username}" with password "{password}"')

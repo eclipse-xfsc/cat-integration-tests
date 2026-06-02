@@ -37,6 +37,26 @@ def after_scenario(context, scenario) -> None:
     except (AttributeError, KeyError):
         pass
 
+    # Reset trust-framework enabled state to the seeded default (all disabled). Discovery and
+    # compliance scenarios enable a family via Background; with a family enabled the server
+    # switches to strict semantics (untyped credentials rejected), which breaks later
+    # @cfg.default scenarios (e.g. provenance, custom-subclass) and leaks across runs. The
+    # state is Background-set, so per-scenario Gherkin steps cannot clean it up on failure —
+    # this hook is the only safe place.
+    # GET /trust-frameworks returns only enabled families (no "enabled" field), so every id
+    # in the response is currently enabled and must be reset to disabled.
+    try:
+        frameworks = context.fc_server.get_trust_frameworks().json()
+    except Exception:  # noqa: BLE001
+        frameworks = []
+    for framework in frameworks if isinstance(frameworks, list) else []:
+        framework_id = framework.get("id")
+        if framework_id:
+            try:
+                context.fc_server.set_trust_framework_enabled(framework_id, enabled=False)
+            except Exception:  # noqa: BLE001
+                pass
+
     # Restore any base-class-toggle states that were disabled during the scenario.
     # This runs unconditionally so that a failed assertion cannot leave a base class
     # disabled and poison subsequent scenarios (@domain.admin base-class-toggle tests).

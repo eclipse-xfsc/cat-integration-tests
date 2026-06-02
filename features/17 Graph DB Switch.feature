@@ -50,12 +50,33 @@ Feature: Graph DB Admin — Live Backend Switch
       And response message lists valid backends
 
   @baseline @cfg.default
-  Scenario: Rebuild trigger completes asynchronously
-    # POST /admin/graph/rebuild returns 202 Accepted (async kicked off) and the
-    # status endpoint reports complete=true within the timeout.
+  Scenario: Rebuild trigger completes asynchronously and re-indexes JWT-secured claims
+    # POST /admin/graph/rebuild returns 202 Accepted (async kicked off) and the status
+    # endpoint reports complete=true within the timeout. With a JWT VP uploaded first, the
+    # rebuild must re-index its claims (errors=0 via the poll step, and the active-graph
+    # claim count grows) — proving the rebuild path decodes JWT-secured credentials the
+    # same way the upload path does.
     Given the active graph backend is FUSEKI
+      And credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
+      And the current graph claim count is recorded
+      And a credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is uploaded with content-type "application/vp+jwt"
     When trigger graph rebuild
     Then get http 202:Accepted code
+      And graph rebuild completes within timeout
+      And the graph claim count grew beyond the recorded baseline
+
+  @baseline @cfg.default
+  Scenario: Rebuild while one is already running returns 409
+    # A JWT VP fixture is uploaded first so the first rebuild has non-trivial work and the
+    # second POST lands while it is still running, yielding a timing-stable 409. (Previously
+    # deferred because a rebuild against an empty graph finished too fast to leave a window.)
+    Given the active graph backend is FUSEKI
+      And credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is not uploaded
+      And a credential from fixture "loire/valid/participant-vp.loire.signed.jwt" is uploaded with content-type "application/vp+jwt"
+    When trigger graph rebuild
+    Then get http 202:Accepted code
+    When trigger graph rebuild
+    Then get http 409:Conflict code
       And graph rebuild completes within timeout
 
   @baseline @cfg.default

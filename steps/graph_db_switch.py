@@ -7,6 +7,7 @@ fallback, persistence across `docker restart fc-server`) and reachability reject
 keep those manual or move them to a docker-aware suite.
 """
 import time
+from pathlib import Path
 
 import requests
 from behave import given, then, when
@@ -17,12 +18,14 @@ from eu.xfsc.bdd.cat.components.fc_server import Server
 VALID_BACKENDS = {"NEO4J", "FUSEKI", "NONE"}
 REBUILD_POLL_INTERVAL_SECONDS = 2
 REBUILD_POLL_MAX_ATTEMPTS = 30  # ~60s max
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 class ContextType:
     fc_server: Server
     requests_response: requests.Response
     initial_backend: str
+    baseline_claim_count: int
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +123,9 @@ def trigger_rebuild(context: ContextType) -> None:
 
 @then("graph rebuild completes within timeout")
 def poll_rebuild_until_done(context: ContextType) -> None:
-    """Polls rebuild status until running=false; asserts complete=true and failed=false."""
+    """Polls rebuild status until running=false; asserts complete=true, failed=false,
+    and errors=0. The errors check catches per-asset extraction failures (e.g. a JWT
+    asset that the rebuild path could not decode) that otherwise slip past failed=false."""
     for _ in range(REBUILD_POLL_MAX_ATTEMPTS):
         resp = context.fc_server.get_graph_rebuild_status()
         assert resp.status_code == 200, f"Poll failed: {resp.status_code}"
@@ -130,12 +135,45 @@ def poll_rebuild_until_done(context: ContextType) -> None:
                 f"Rebuild stopped but not complete: {body}"
             assert body.get("failed") is False, \
                 f"Rebuild reported failed=true: {body}"
+            assert body.get("errors", 0) == 0, \
+                f"Rebuild reported per-asset extraction errors: {body}"
             return
         time.sleep(REBUILD_POLL_INTERVAL_SECONDS)
     raise AssertionError(
         f"Rebuild did not complete within "
         f"{REBUILD_POLL_INTERVAL_SECONDS * REBUILD_POLL_MAX_ATTEMPTS}s"
     )
+
+
+# ---------------------------------------------------------------------------
+# Claim-growth helpers (rebuild re-indexes stored assets into the active graph)
+# ---------------------------------------------------------------------------
+
+@given('a credential from fixture "{fixture_path}" is uploaded with content-type "{content_type}"')
+def upload_credential_fixture(context: ContextType, fixture_path: str, content_type: str) -> None:
+    """Uploads a fixture credential so the next rebuild has non-trivial work to do."""
+    payload = (FIXTURES_DIR / fixture_path).read_text()
+    resp = context.fc_server.add_asset_with_content_type(payload, content_type)
+    assert resp.status_code in (200, 201), \
+        f"Fixture upload failed: {resp.status_code} {resp.text}"
+    context.requests_response = resp
+
+
+@given("the current graph claim count is recorded")
+def record_claim_count(context: ContextType) -> None:
+    body = context.fc_server.get_graph_database_status().json()
+    context.baseline_claim_count = body.get("claimCount", 0)
+
+
+@then("the graph claim count grew beyond the recorded baseline")
+def assert_claim_count_grew(context: ContextType) -> None:
+    """A successful rebuild of a JWT-secured credential must re-index its claims, so the
+    active-graph claim count exceeds the pre-upload baseline. Before CAT-FR-GD-01 the JWT
+    body reached the extractors raw and yielded zero claims, so the count did not grow."""
+    body = context.fc_server.get_graph_database_status().json()
+    current = body.get("claimCount", 0)
+    assert current > context.baseline_claim_count, \
+        f"Expected claim count to grow beyond {context.baseline_claim_count}, got {current}"
 
 
 # ---------------------------------------------------------------------------

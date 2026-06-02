@@ -13,7 +13,7 @@ Feature: Compliance Check
 
   @uses.compliance-mock
   Scenario: Compliance check with mismatched VP id — returns unverifiable without contacting service
-    # VP JWT id "urn:uuid:98765432-..." does not match path asset id "did:web:compliance-test.example.org".
+    # VP JWT id "did:web:compliance-asset.example.org" does not match path asset id "did:web:compliance-test.example.org".
     # Orchestrator short-circuits; compliance service is never contacted.
     Given compliance service is stubbed to issue attestation
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
@@ -52,8 +52,10 @@ Feature: Compliance Check
     Then get http 400:Bad Request code
 
   Scenario: Disabled trust framework family — returns 409
+    # Asset id must match the VP JWT id so the orchestrator's id-mismatch short-circuit
+    # is not hit first — only then is the disabled-family gate (409) reached.
     Given mock trust framework is disabled
-    When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 409:Conflict code
     And mock trust framework is re-enabled
 
@@ -65,10 +67,10 @@ Feature: Compliance Check
 
   @uses.compliance-mock @smoke
   Scenario: Compliance service issues attestation — returns conforms=true
-    # VP id "urn:uuid:98765432-..." matches the path asset id: orchestrator passes through.
+    # VP id "did:web:compliance-asset.example.org" matches the path asset id: orchestrator passes through.
     # WireMock returns 201 with a parseable JWT → IssuedAttestation.
     Given compliance service is stubbed to issue attestation
-    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is true
     And compliance result has attestation credential
@@ -77,7 +79,7 @@ Feature: Compliance Check
   Scenario: Compliance service rejects credential as non-compliant — returns conforms=false
     # WireMock returns 400: GxdchComplianceClient maps this to UnverifiableAttestation.
     Given compliance service is stubbed to reject as non-compliant
-    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is false
     And compliance result failure category is "UNVERIFIABLE_ATTESTATION"
@@ -86,7 +88,7 @@ Feature: Compliance Check
   Scenario: Compliance service unavailable — FC returns 503
     # WireMock returns 503: orchestrator maps HttpServerErrorException to ServiceUnavailableException → 503.
     Given compliance service is stubbed to return service error
-    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 503:Service Unavailable code
 
   # -----------------------------------------------------------------------
@@ -105,7 +107,7 @@ Feature: Compliance Check
     Given compliance service is stubbed to issue attestation
     And compliance service is stubbed to issue attestation on path "/api/credential-offers/relocated-compliance"
     And operator overrides bundle "mock-2026" config: compliancePath = "/api/credential-offers/relocated-compliance"
-    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is true
     And compliance service received 1 calls on path "/api/credential-offers/relocated-compliance"
@@ -120,7 +122,7 @@ Feature: Compliance Check
     And compliance service is stubbed to issue attestation on path "/api/credential-offers/relocated-compliance"
     And operator overrides bundle "mock-2026" config: compliancePath = "/api/credential-offers/relocated-compliance"
     And operator overrides bundle "mock-2026" config: compliancePath = "null"
-    When run compliance check for asset "urn:uuid:98765432-4321-4321-4321-cba987654321" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
+    When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
     And compliance result conforms is true
     And compliance service received 1 calls on path "/api/credential-offers/standard-compliance"

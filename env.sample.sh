@@ -78,13 +78,16 @@ case ${CAT_ENV} in
     export CAT_FC_HOST="https://fc-server.qa.example.org"
     export CAT_KEYCLOAK_URL="https://keycloak.qa.example.org"
     # Existing QA stages with a pre-existing gaia-x realm should keep "gaia-x" here.
-    export CAT_KEYCLOAK_REALM="gaia-x"
+    export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
     export CAT_KEYCLOAK_CLIENT_SECRET="your-qa-secret-here"
     export CAT_KEYCLOAK_SCOPE="openid"
     export CAT_TEST_USER="qa-test-user"
     export CAT_TEST_PASSWORD="qa-test-password"
-    export CAT_WIREMOCK_HOST="https://wiremock.qa.example.org"  # TODO: set real QA WireMock host
+    # Compliance mock for @uses.compliance-mock scenarios. If the mock runs in-cluster
+    # (Helm complianceMock.enabled), port-forward it and point here at the local port:
+    #   kubectl port-forward -n federated-catalogue svc/fc-compliance-mock 8089:8080
+    export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
 
   *)

@@ -178,6 +178,22 @@ They must be triggered explicitly by tag.
 | `@uses.compliance-mock` | WireMock instance at `CAT_WIREMOCK_HOST`; FC server's `mock-2026.service_url` pointing at it                                                                                                         |
 | `@uses.live-gxdch`      | Live internet access to `https://compliance.gaia-x.eu/v2`; `gaia-x` trust framework family enabled; participant VP fixture signed by a key whose `x5u` resolves to a GXDCH-trusted certificate chain |
 
+#### Running `@uses.compliance-mock` scenarios
+
+The WireMock mock runs **in the cluster** (Helm `complianceMock.enabled`). The FC calls its stub
+endpoints in-cluster; the **test process** configures the mock and reads its call journal via
+WireMock's `/__admin` API, so the test needs to reach it. For a local run against the QA cluster,
+port-forward the mock — `env.sh` (`CAT_ENV=qa`) already points `CAT_WIREMOCK_HOST` at the local port:
+
+```bash
+kubectl port-forward -n federated-catalogue svc/fc-compliance-mock 8089:8080 &
+source env.sh   # sets CAT_WIREMOCK_HOST=http://localhost:8089
+behave "features/16 Compliance Check.feature"
+```
+
+For CI, run the suite as an in-cluster Job so it reaches `/__admin` over cluster DNS — no
+port-forward or public exposure needed.
+
 #### Running `@uses.live-gxdch` scenarios
 
 ```bash
