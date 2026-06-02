@@ -1,7 +1,11 @@
 import json
+import os
 import uuid
+from datetime import datetime, timedelta, timezone
+
 import requests
-from behave import when, then
+from behave import then, when
+
 from eu.xfsc.bdd.cat.components.fc_server import Server
 
 
@@ -10,8 +14,15 @@ class ContextType:
     requests_response: requests.Response
 
 
-_PROV_VC_ISSUER = "did:web:did-server"
+_PROV_VC_ISSUER = os.getenv("CAT_PROV_VC_ISSUER", "did:web:did-server")
 _PROV_NS = "http://www.w3.org/ns/prov#"
+
+
+def _get_valid_from_timestamp() -> str:
+    """Return ISO-8601 timestamp (now - 1 hour) in UTC with Z suffix."""
+    now_utc = datetime.now(timezone.utc)
+    valid_from = now_utc - timedelta(hours=1)
+    return valid_from.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def _expand_prov_predicate(predicate: str) -> str:
@@ -67,7 +78,7 @@ def _build_provenance_vc_multi(asset_id: str, version: int, predicates: list) ->
         "type": ["VerifiableCredential"],
         "id": f"urn:uuid:{uuid.uuid4()}",
         "issuer": _PROV_VC_ISSUER,
-        "validFrom": "2026-01-01T00:00:00Z",
+        "validFrom": _get_valid_from_timestamp(),
         "credentialSubject": subject,
     })
 
@@ -115,7 +126,7 @@ def _build_activity_centric_provenance_vc(
         "type": ["VerifiableCredential"],
         "id": f"urn:uuid:{uuid.uuid4()}",
         "issuer": _PROV_VC_ISSUER,
-        "validFrom": "2026-01-01T00:00:00Z",
+        "validFrom": _get_valid_from_timestamp(),
         "credentialSubject": subject,
     })
 

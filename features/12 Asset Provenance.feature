@@ -104,6 +104,7 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When cascade-delete saved asset by id
     Then get http 204:No Content code
+    # Spec: 204 on unknown id (idempotent)
     When cascade-delete saved asset by id
     Then get http 204:No Content code
     When list provenance credentials for saved asset
@@ -150,6 +151,7 @@ Feature: Asset Provenance and Versioning
     Then get http 201:Created code
     When cascade-delete saved asset by id
     Then get http 204:No Content code
+    # Spec: 204 on unknown id (idempotent)
     When cascade-delete saved asset by id
     Then get http 204:No Content code
     When list provenance credentials for saved asset
