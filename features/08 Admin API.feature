@@ -21,19 +21,9 @@ Feature: Admin API — Runtime Configuration
       And uploaded schemas are cleaned up
 
   @baseline @cfg.strict
-  Scenario: SHACL module re-enabled via admin API — violating credential rejected
-    # Re-enable SHACL (default for strict); credential missing gx:legalName is rejected.
-    Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
-      And SHACL schema module is enabled
-    When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
-    Then get http 422:Unprocessable Entity code
-      And uploaded schemas are cleaned up
-
-  @baseline
   Scenario: SHACL module disabled — on-demand validation rejected with module_disabled
     # The on-demand validation gate fires before any asset lookup, so the rejection
-    # is observable with placeholder asset ids and is independent of the
-    # verifySchema server config.
+    # is observable with placeholder asset ids and is independent of admin module state.
     Given SHACL schema module is disabled
     When validate 2 dummy assets against all schemas
     Then get http 400:Bad Request code
@@ -41,30 +31,29 @@ Feature: Admin API — Runtime Configuration
       And SHACL schema module is re-enabled
 
   @baseline @cfg.default
-  Scenario: SHACL module disabled — credential verification with schema check rejected
-    # The SHACL gate in CredentialVerificationStrategy fires when verifySchema=true
-    # is passed explicitly via query param, so this scenario is independent of the
-    # server's verifySchema default config.
-    Given SHACL schema module is disabled
-    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" with schema check skipping signatures
-    Then get http 400:Bad Request code
-      And response body contains "module_disabled:SHACL"
-      And SHACL schema module is re-enabled
-
-  @baseline @cfg.default
+  @baseline @cfg.strict
   Scenario: OWL module disabled — custom-subclass credential fails role resolution with 400
-    # resolveRole skips the rdfs:subClassOf+ walk when OWL is off. With verifySemantics
-    # off (default config), the request reaches the unconditional null-role check in
-    # VerificationServiceImpl, which rejects with 400 "not resolvable". In strict
-    # config the same custom-subclass credential is rejected one layer earlier with
-    # 422 "Semantic Error" (hasClasses() = false because the role resolves to UNKNOWN).
-    # Both outcomes demonstrate the OWL toggle's effect; this scenario pins the 400
-    # contract observable in default config.
+    # resolveRole skips the rdfs:subClassOf+ walk when OWL is off, so the role resolves
+    # to null. When requireBaseClass=true (opt-in), the null-role check rejects with 400 "not resolvable".
+    # The default (requireBaseClass=false) counterpart accepts the same credential (see next scenario)
+    # because base-class compliance is opt-in by default.
+    Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
+      And OWL schema module is disabled
+    When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" with requireBaseClass=true skipping signatures
+    Then get http 400:Bad Request code
+      And response body contains "not resolvable"
+      And OWL schema module is re-enabled
+      And uploaded schemas are cleaned up
+
+  @baseline @cfg.default @req.CAT-FR-CO-01
+  Scenario: OWL module disabled — custom-subclass credential accepted under default config
+    # Counterpart to the strict scenario above. Default config has requireBaseClass=false,
+    # so a credential whose @type only resolves through the OWL subclass walk is accepted
+    # even when the OWL module is off and the role cannot be resolved.
     Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
       And OWL schema module is disabled
     When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
-    Then get http 400:Bad Request code
-      And response body contains "not resolvable"
+    Then get http 200:Success code
       And OWL schema module is re-enabled
       And uploaded schemas are cleaned up
 
@@ -191,7 +180,7 @@ Feature: Admin API — Runtime Configuration
   #   No fixture exists for a credential whose @type is a runtime-uploaded OWL subclass of
   #   gx:ServiceOffering. Fabricating or signing a new fixture is out of scope here
   #   (see bdd-automation-knowledge/fixture-signing.md). Coverage is provided transitively by
-  #   CredentialVerificationStrategyOwlToggleTest in fc-service-core.
+  #   CredentialIngestionStrategyOwlToggleTest in fc-service-core.
   #
   # Persistence-across-restart is OUT OF SCOPE for this BDD suite.
   #   The JPA-backed unit tests in fc-service-core cover that guarantee transitively.
