@@ -21,7 +21,6 @@ Feature: Admin API — Runtime Configuration
       And uploaded schemas are cleaned up
 
   @baseline @cfg.strict
-  @baseline
   Scenario: SHACL module disabled — on-demand validation rejected with module_disabled
     # The on-demand validation gate fires before any asset lookup, so the rejection
     # is observable with placeholder asset ids and is independent of admin module state.
@@ -52,11 +51,11 @@ Feature: Admin API — Runtime Configuration
     # so a credential whose @type only resolves through the OWL subclass walk is accepted
     # even when the OWL module is off and the role cannot be resolved.
     Given schema from fixture "schemas/ex-custom-participant.ontology.ttl" is uploaded as "text/turtle"
-    And OWL schema module is disabled
+      And OWL schema module is disabled
     When verify credential from fixture "valid/default-only/custom-participant-subclass.vp.jsonld" skipping signatures
     Then get http 200:Success code
-    And OWL schema module is re-enabled
-    And uploaded schemas are cleaned up
+      And OWL schema module is re-enabled
+      And uploaded schemas are cleaned up
 
   @baseline
   Scenario: OWL module enabled — custom-subclass credential resolves via subclass walk
