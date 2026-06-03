@@ -12,15 +12,18 @@ Feature: Compliance Check
     And mock trust framework is enabled
 
   @uses.compliance-mock
-  Scenario: Compliance check with mismatched VP id — returns unverifiable without contacting service
-    # VP JWT id "did:web:compliance-asset.example.org" does not match path asset id "did:web:compliance-test.example.org".
-    # Orchestrator short-circuits; compliance service is never contacted.
+  Scenario: Compliance check with mismatched VP id — request reaches the clearing house
+    # VP JWT id "did:web:compliance-asset.example.org" does not match the path asset id
+    # "did:web:compliance-test.example.org". The orchestrator no longer short-circuits on
+    # this mismatch — it forwards the request to the compliance service and returns whatever
+    # the clearing house decides. The stub here is configured to issue an attestation, so
+    # the result is conforms=true and the compliance service did receive a call.
     Given compliance service is stubbed to issue attestation
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
-    And compliance result conforms is false
-    And compliance result failure category is "UNVERIFIABLE_ATTESTATION"
-    And compliance service received 0 calls
+    And compliance result conforms is true
+    And compliance result has attestation credential
+    And compliance service received 1 calls
 
   @uses.compliance-mock
   Scenario: Compliance check with non-JWT credential — client returns unverifiable without contacting service
