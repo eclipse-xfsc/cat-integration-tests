@@ -1,0 +1,74 @@
+@domain.verify @baseline
+Feature: Credential Verification
+  As a Federated Catalogue API consumer
+  I want to verify a Credential
+  So that I can check its validity before submitting it
+
+  Background:
+    Given CAT Keycloak is up
+      And saved Keycloak token
+      And Federated Catalogue Server is up
+
+  # Smoke test: fixture uses legacy @type (http://w3id.org/gaia-x/participant#Participant)
+  # which does not match any loaded ontology — server rejects with semantic error.
+  @smoke @cfg.strict
+  Scenario: Verify credential with unrecognised type returns semantic error
+    When verify credential from fixture "valid/default-only/gaiax-participant-legacy-type.vp.jsonld"
+    Then get http 422:Unprocessable Entity code
+
+  @smoke @req.CAT-FR-CO-01 @cfg.default @cfg.strict
+  Scenario: Verify credential with correct ontology type passes semantic check
+    # Uses fixture with @type matching loaded ontology (https://w3id.org/gaia-x/core#Participant).
+    # Signatures are skipped because the fixture is not signed.
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+
+  @smoke
+  Scenario: Verify an invalid credential returns error
+    # No RDF triples extractable → client_error before any verification step runs.
+    When verify credential
+      """
+      { "invalid": "payload" }
+      """
+    Then get http 400:Bad Request code
+    And response body contains "no triples"
+
+  # --- Strict config: schema validation + Gaia-X enabled (regression) ---
+
+  @smoke @regression @cfg.strict
+  Scenario: Participant passes schema validation under strict config
+    # Schema=true is active but the loaded SHACL shapes are permissive for this type.
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+
+  @regression @cfg.strict
+  Scenario: Invalid payload rejected with schema validation enabled
+    # client_error (400), not verification_error (422): the no-triples check fires before
+    # schema validation — config flags do not affect this rejection path.
+    When verify credential
+      """
+      { "invalid": "payload" }
+      """
+    Then get http 400:Bad Request code
+    And response body contains "no triples"
+
+  @smoke @regression @cfg.strict
+  Scenario: Verification passes with Gaia-X enabled but no compliance VC
+    # FINDING: gaiax.enabled=true does NOT enforce compliance check on /verification.
+    # The trust framework check is only enforced during upload (/assets).
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+
+  @regression @cfg.strict
+  Scenario: Signature skip is allowed even under strict config
+    # FINDING: strict config (gaiax=true, schema=true) does not prevent callers from
+    # skipping signature verification via query params. The four verification flags
+    # are orthogonal — no requirement mandates coupling them.
+    When verify credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" skipping signatures
+    Then get http 200:Success code
+
+  @smoke @regression @cfg.strict @cfg.test-sig
+  Scenario: Verification with valid signatures passes
+    # Loire JWT fixture signed with EdDSA + did:web.
+    When verify credential from fixture "loire/valid/participant.vc2.signed.jwt"
+    Then get http 200:Success code

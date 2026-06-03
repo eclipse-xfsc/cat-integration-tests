@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#"
+  ],
+  "type": [
+    "VerifiablePresentation"
+  ],
+  "id": "urn:uuid:vp-bdd-ld-proof",
+  "holder": "did:web:did-server",
+  "verifiableCredential": [
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://w3id.org/gaia-x/2511#"
+      ],
+      "type": [
+        "VerifiableCredential",
+        "gx:LegalPerson"
+      ],
+      "id": "urn:uuid:vc-bdd-ld-proof",
+      "issuer": "did:web:did-server",
+      "validFrom": "2026-01-30T00:00:00Z",
+      "validUntil": "2027-12-31T23:59:59Z",
+      "credentialSubject": {
+        "id": "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd",
+        "@type": "gx:LegalPerson"
+      }
+    }
+  ],
+  "proof": {
+    "type": "Ed25519Signature2020",
+    "created": "2026-01-30T00:00:00Z",
+    "verificationMethod": "did:web:did-server#jwt-key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z2WcHJsNYqbwaBh4if7HpYZaCMBGkquRVvJpWNKebsWD1YjbWz7zrnmkNQmLVMvbdTyujqCKzXLadNi4fTJHZEwmm"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "iss": "did:web:did-server",
+  "sub": "did:web:participant.example.com",
+  "exp": 1000000000,
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#"
+  ],
+  "id": "urn:uuid:jwt-bdd-expired",
+  "type": ["VerifiableCredential", "gx:LegalPerson"],
+  "issuer": "did:web:did-server",
+  "validFrom": "2001-01-01T00:00:00Z",
+  "validUntil": "2001-09-09T01:46:40Z",
+  "credentialSubject": {
+    "id": "did:web:participant.example.com",
+    "@type": "gx:LegalPerson",
+    "gx:legalName": [{"@value": "Expired Corp"}]
+  }
+}

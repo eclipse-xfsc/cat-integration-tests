@@ -1,0 +1,26 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#"
+  ],
+  "type": ["VerifiablePresentation"],
+  "id": "urn:uuid:vp-bdd-participant-with-legalname",
+  "verifiableCredential": [
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://w3id.org/gaia-x/2511#"
+      ],
+      "type": ["VerifiableCredential", "gx:LegalPerson"],
+      "id": "urn:uuid:vc-bdd-participant-with-legalname",
+      "issuer": "did:web:did-server",
+      "validFrom": "2026-01-30T00:00:00Z",
+      "validUntil": "2027-12-31T23:59:59Z",
+      "credentialSubject": {
+        "id": "did:web:participant.example.com",
+        "@type": "gx:LegalPerson",
+        "gx:legalName": [{"@value": "Test Participant AG"}]
+      }
+    }
+  ]
+}

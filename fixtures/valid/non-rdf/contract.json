@@ -1,0 +1,13 @@
+{
+  "contractId": "contract-2026-001",
+  "title": "Data Processing Agreement",
+  "version": "1.0",
+  "parties": [
+    {"name": "Provider A", "role": "data-provider"},
+    {"name": "Consumer B", "role": "data-consumer"}
+  ],
+  "terms": {
+    "duration": "12 months",
+    "jurisdiction": "EU"
+  }
+}

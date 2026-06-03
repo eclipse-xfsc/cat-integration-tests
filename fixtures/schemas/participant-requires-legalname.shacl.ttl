@@ -1,0 +1,13 @@
+@prefix sh:       <http://www.w3.org/ns/shacl#> .
+@prefix gax-core: <https://w3id.org/gaia-x/core#> .
+@prefix schema:   <http://schema.org/> .
+
+gax-core:ParticipantShape
+    a sh:NodeShape ;
+    sh:targetClass gax-core:Participant ;
+    sh:property [
+        sh:path schema:legalName ;
+        sh:minCount 1 ;
+        sh:name "Legal Name" ;
+        sh:description "Every Participant MUST have a legal name." ;
+    ] .

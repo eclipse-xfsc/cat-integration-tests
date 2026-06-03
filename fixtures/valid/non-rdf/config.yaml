@@ -1,0 +1,12 @@
+service:
+  name: example-service
+  version: 2.1.0
+  endpoint: https://api.example.com/v2
+  authentication:
+    type: oauth2
+    scopes:
+      - read
+      - write
+  compliance:
+    framework: gaia-x
+    level: basic

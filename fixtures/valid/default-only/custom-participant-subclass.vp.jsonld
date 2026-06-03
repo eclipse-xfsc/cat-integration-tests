@@ -1,0 +1,31 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#",
+    {
+      "ex": "https://example.org/custom#"
+    }
+  ],
+  "type": ["VerifiablePresentation"],
+  "id": "urn:uuid:vp-bdd-owl-custom-subclass",
+  "verifiableCredential": [
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://w3id.org/gaia-x/2511#",
+        {
+          "ex": "https://example.org/custom#"
+        }
+      ],
+      "type": ["VerifiableCredential", "ex:MyCustomParticipant"],
+      "id": "urn:uuid:vc-bdd-owl-custom-subclass",
+      "issuer": "did:web:did-server",
+      "validFrom": "2026-01-30T00:00:00Z",
+      "validUntil": "2027-12-31T23:59:59Z",
+      "credentialSubject": {
+        "id": "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd",
+        "@type": "ex:MyCustomParticipant"
+      }
+    }
+  ]
+}

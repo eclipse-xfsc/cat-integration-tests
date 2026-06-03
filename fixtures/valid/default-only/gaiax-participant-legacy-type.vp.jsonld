@@ -1,0 +1,25 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://w3id.org/gaia-x/2511#"
+  ],
+  "type": ["VerifiablePresentation"],
+  "id": "urn:uuid:vp-bdd-legacy-type",
+  "verifiableCredential": [
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://w3id.org/gaia-x/2511#"
+      ],
+      "type": ["VerifiableCredential"],
+      "id": "urn:uuid:vc-bdd-legacy-type",
+      "issuer": "did:web:did-server",
+      "validFrom": "2026-01-30T00:00:00Z",
+      "validUntil": "2027-12-31T23:59:59Z",
+      "credentialSubject": {
+        "id": "did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd",
+        "@type": "http://w3id.org/gaia-x/participant#Participant"
+      }
+    }
+  ]
+}

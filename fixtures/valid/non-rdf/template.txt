@@ -1,0 +1,7 @@
+This is a sample contract template for the Federated Catalogue.
+
+Section 1: Terms and Conditions
+The participant agrees to comply with all applicable regulations.
+
+Section 2: Data Processing
+Data shall be processed in accordance with GDPR requirements.
