@@ -30,7 +30,6 @@ Feature: Admin API — Runtime Configuration
       And response body contains "module_disabled:SHACL"
       And SHACL schema module is re-enabled
 
-  @baseline @cfg.default
   @baseline @cfg.strict
   Scenario: OWL module disabled — custom-subclass credential fails role resolution with 400
     # resolveRole skips the rdfs:subClassOf+ walk when OWL is off, so the role resolves
