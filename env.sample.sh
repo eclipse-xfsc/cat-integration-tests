@@ -49,10 +49,14 @@ case ${CAT_ENV} in
     # Must match KEYCLOAK_REALM in federated-catalogue/docker/dev.env (default: federated-catalogue-realm)
     export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
-    export CAT_KEYCLOAK_CLIENT_SECRET=""
+    # Dev-realm defaults from keycloak/realms/dev/fc-realm.json. The dev realm
+    # is bundled with the docker-compose stack, so no Keycloak setup is needed —
+    # user fc-ca-test (role ADMIN_ALL) and client secret "**********" are
+    # already configured at import time.
+    export CAT_KEYCLOAK_CLIENT_SECRET="**********"
     export CAT_KEYCLOAK_SCOPE="openid"
-    export CAT_TEST_USER="admin"
-    export CAT_TEST_PASSWORD="admin"
+    export CAT_TEST_USER="fc-ca-test"
+    export CAT_TEST_PASSWORD="CHANGE_ME_dev_only1"
     # WireMock for @uses.compliance-mock scenarios (see docker-compose stack)
     export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
@@ -65,10 +69,12 @@ case ${CAT_ENV} in
     # Must match the realm configured in the Helm chart (default: federated-catalogue-realm)
     export CAT_KEYCLOAK_REALM="federated-catalogue-realm"
     export CAT_KEYCLOAK_CLIENT_ID="federated-catalogue"
-    export CAT_KEYCLOAK_CLIENT_SECRET=""
+    # Dev realm defaults (same as docker-compose target); set explicitly if your
+    # Helm values override them.
+    export CAT_KEYCLOAK_CLIENT_SECRET="**********"
     export CAT_KEYCLOAK_SCOPE="openid"
-    export CAT_TEST_USER="admin"
-    export CAT_TEST_PASSWORD="admin"
+    export CAT_TEST_USER="fc-ca-test"
+    export CAT_TEST_PASSWORD="CHANGE_ME_dev_only1"
     export CAT_WIREMOCK_HOST="http://localhost:8089"
     ;;
 

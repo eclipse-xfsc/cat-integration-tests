@@ -26,58 +26,28 @@ make setup_dev
 
 ## Keycloak Setup
 
-The tests authenticate via **Resource Owner Password Grant** (not client credentials). You need a Keycloak user with the correct Federated Catalogue roles.
+For `CAT_ENV=docker-compose` (the default), **no manual Keycloak setup is required**. The dev
+realm at `federated-catalogue/keycloak/realms/dev/fc-realm.json` is auto-imported on first boot
+and bundles everything the tests need:
 
-### 1. Create a test user
+| What           | Value                                                          |
+|----------------|----------------------------------------------------------------|
+| Realm          | `federated-catalogue-realm`                                    |
+| Client         | `federated-catalogue` (secret: `**********`)                   |
+| Test user      | `fc-ca-test` (password: `CHANGE_ME_dev_only1`)                 |
+| Test user role | `ADMIN_ALL` (composite — includes all required FC permissions) |
 
-1. Open Keycloak Admin Console: <http://key-server:8080/admin/> (admin / admin for docker-compose)
-2. Select the realm matching `CAT_KEYCLOAK_REALM` in `env.sh` (default: `federated-catalogue-realm`; legacy QA:
-   `gaia-x`)
-3. Go to **Users** > **Add user**
-4. Set username to `admin` (or whatever `CAT_TEST_USER` is set to in `env.sh`)
-5. Save
-
-### 2. Set a permanent password
-
-1. Go to the user's **Credentials** tab
-2. Click **Set password**
-3. Enter the password matching `CAT_TEST_PASSWORD` in `env.sh` (default: `admin`)
-4. Set **Temporary** to **OFF**
-5. Save
-
-### 3. Clear required actions
-
-1. Go to the user's **Details** tab
-2. Remove all entries from **Required User Actions** (e.g. "Update Password", "Verify Email")
-3. Save
-
-If required actions remain, the password grant will fail with: `invalid_grant: Account is not fully set up`.
-
-### 4. Assign Federated Catalogue roles
-
-1. Go to the user's **Role mapping** tab
-2. Click **Assign role**
-3. Filter by client: **federated-catalogue**
-4. Assign the roles needed for your test scenarios:
-
-| Role | Required for |
-|------|-------------|
-| `Ro-MU-CA` | Catalogue Admin (full access) |
-| `Ro-MU-A` | User management |
-| `Ro-AS-A` | Asset management (create, delete, revoke) |
-| `Ro-PA-A` | Participant management |
-
-For running all tests, assign **Ro-MU-CA** (includes all permissions).
-
-### 5. Add the client secret to `dev.env`
-1. Go to **Clients** > **federated-catalogue** > **Credentials** tab
-2. Copy the **Secret** value
-3. Paste it into `dev.env` as the value for `FC_CLIENT_SECRET`
-
-### 6. Verify
+The defaults are already wired up in `env.sample.sh` (`docker-compose` and `minikube` blocks).
+Copy it to `env.sh` and you're done:
 
 ```bash
-# Quick check that the token grant works (make sure env.sh is sourced first):
+cp env.sample.sh env.sh
+source env.sh
+```
+
+### Verify
+
+```bash
 curl -s -X POST "${CAT_KEYCLOAK_URL}/realms/${CAT_KEYCLOAK_REALM}/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=${CAT_KEYCLOAK_CLIENT_ID}" \
@@ -88,6 +58,13 @@ curl -s -X POST "${CAT_KEYCLOAK_URL}/realms/${CAT_KEYCLOAK_REALM}/protocol/openi
 ```
 
 You should see `"access_token": "eyJ..."` in the response.
+
+### QA / staging environments
+
+The `qa` block in `env.sample.sh` keeps placeholders (`your-qa-secret-here`, `qa-test-user`, …)
+because those values are tenant-specific. Set them to match your QA Keycloak's actual client
+secret and test user — the user must have `ADMIN_ALL` (or the equivalent composite that includes
+`Ro-MU-CA`/`Ro-AS-A`/`Ro-PA-A`/`Ro-MU-A`).
 
 ## Running Tests
 
@@ -379,7 +356,6 @@ Because `did:web` provides indirection, the signed fixtures do **not** need to b
 
 ### Infrastructure
 
-- **`FC_CLIENT_SECRET` in `dev.env`** — The default `dev.env` ships with `FC_CLIENT_SECRET=**********` (placeholder). This must be replaced with the actual Keycloak client secret, otherwise `GET /session`, `GET /participants`, and all user endpoints return 500 (the FC server fails to authenticate to Keycloak admin API).
 - **`docker compose restart` does not pick up env var changes.** Use `docker compose up -d <service>` to recreate containers when you change `dev.env` or compose overrides.
 
 ### Signature Verification

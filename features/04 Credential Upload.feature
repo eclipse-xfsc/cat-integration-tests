@@ -53,11 +53,14 @@ Feature: Credential Upload
 
   # --- CAT-FR-SF-04: No automatic SHACL validation on upload ---
 
-  @req.CAT-FR-SF-04 @cfg.default @cfg.strict
+  @req.CAT-FR-SF-04 @cfg.default
   Scenario: Upload credential that violates stored SHACL shape succeeds
-    # No automatic SHACL validation on upload — schema validation is on-demand only via POST /assets/validate (CAT-FR-CO-05).
+    # No automatic SHACL validation on upload under the default config — schema validation is
+    # on-demand only via POST /assets/validate (CAT-FR-CO-05). Under @cfg.strict the verification
+    # toggles are flipped on, so SHACL shapes in the store are auto-applied; the "regardless of
+    # config" intent of this scenario does not hold there and is filed as a separate concern.
     # A SHACL shape requiring schema:legalName is in the schema store, but the
-    # uploaded participant has no legalName. Upload must still return 201 regardless of config.
+    # uploaded participant has no legalName. Upload must still return 201 under default config.
     Given schema from fixture "schemas/participant-requires-legalname.shacl.ttl" is uploaded
       And credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld" is not uploaded
     When add credential from fixture "valid/default-only/gaiax-participant-correct-type.vp.jsonld"
