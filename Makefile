@@ -88,13 +88,13 @@ endif
 run_cat_bdd_dev: setup_dev
 	$(call check_bdd_env)
 	source "$(VENV_PATH_DEV)/bin/activate" && \
-		"$(VENV_PATH_DEV)/bin/coverage" run -m behave $(BEHAVE_TAG_FILTER) $${ARG_BDD_JUNIT:-}
+		"$(VENV_PATH_DEV)/bin/coverage" run -m behave $(BEHAVE_TAG_FILTER) $${ARG_BDD_JUNIT:-} features/
 
 run_cat_bdd_dev_html: setup_dev
 	$(call check_bdd_env)
 	mkdir -p .tmp/behave
 	source "$(VENV_PATH_DEV)/bin/activate" && \
-		"$(VENV_PATH_DEV)/bin/coverage" run -m behave $(BEHAVE_TAG_FILTER) -f html -o .tmp/behave/behave-report.html
+		"$(VENV_PATH_DEV)/bin/coverage" run -m behave $(BEHAVE_TAG_FILTER) -f html -o .tmp/behave/behave-report.html features/
 
 run_cat_bdd_prod: setup_prod
 	$(call check_bdd_env)
