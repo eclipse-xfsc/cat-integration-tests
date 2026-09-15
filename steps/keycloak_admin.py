@@ -73,15 +73,19 @@ def _provision_user_and_fetch_token(context: ContextType, roles: list[str]) -> N
     username = f"{PROVISIONED_USER_PREFIX}{uuid.uuid4().hex[:12]}"
     # Per-user random password, not a fixed constant: after_scenario's cleanup swallows
     # delete failures, so a failed teardown against a shared realm must not leave a live
-    # account with a known, reusable password.
-    password = uuid.uuid4().hex
+    # account with a known, reusable password. Derived from the realm's LIVE password
+    # policy (KeycloakAdmin.generate_test_user_password) rather than a raw hex token,
+    # since the shipped dev realm enforces length/upper/lower/digit/special-char
+    # requirements a lowercase-hex token cannot satisfy.
+    password = context.keycloak_admin.generate_test_user_password()
 
     create_response = context.keycloak_admin.create_user(
         username, password, PROVISIONED_USER_PARTICIPANT_ID,
     )
     assert create_response.status_code == CREATED_STATUS_CODE, (
         f"Keycloak admin user creation for '{username}' failed: "
-        f"{create_response.status_code} {create_response.text}"
+        f"{create_response.status_code} {create_response.text} "
+        f"(password generated against policy '{context.keycloak_admin.resolve_password_policy()}')"
     )
     location = create_response.headers.get("Location", "")
     user_id = location.rstrip("/").rsplit("/", maxsplit=1)[-1]
