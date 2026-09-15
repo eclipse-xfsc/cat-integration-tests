@@ -26,14 +26,15 @@ Feature: Compliance Check
     And compliance service received 1 calls
 
   @uses.compliance-mock
-  Scenario: Compliance check with non-JWT credential — client returns unverifiable without contacting service
-    # A plain string is not a parseable JWT: orchestrator passes through (blank id = no mismatch),
-    # then the GxdchComplianceClient finds no id claim and returns UNVERIFIABLE_ATTESTATION.
+  Scenario: Compliance check with non-JWT credential — rejected before the service is contacted
+    # A plain string is not a parseable JWT, so JwtVcComplianceClient short-circuits before any
+    # request is sent. Per fc_openapi.yaml that is MALFORMED_CREDENTIAL ("no request was sent to the
+    # trust service"); UNVERIFIABLE_ATTESTATION is reserved for a verdict the service actually gave.
     Given compliance service is stubbed to issue attestation
     When run compliance check for asset "did:web:compliance-test.example.org" with profile "mock-2026" and credential "not-a-valid-jwt"
     Then get http 200:Success code
     And compliance result conforms is false
-    And compliance result failure category is "UNVERIFIABLE_ATTESTATION"
+    And compliance result failure category is "MALFORMED_CREDENTIAL"
     And compliance service received 0 calls
 
   @smoke
@@ -80,7 +81,8 @@ Feature: Compliance Check
 
   @uses.compliance-mock
   Scenario: Compliance service rejects credential as non-compliant — returns conforms=false
-    # WireMock returns 400: GxdchComplianceClient maps this to UnverifiableAttestation.
+    # WireMock returns 400: the service was reached and gave a verdict, so JwtVcComplianceClient
+    # maps it to UNVERIFIABLE_ATTESTATION.
     Given compliance service is stubbed to reject as non-compliant
     When run compliance check for asset "did:web:compliance-asset.example.org" with profile "mock-2026" and credential from fixture "loire/valid/participant-vp.loire.signed.jwt"
     Then get http 200:Success code
