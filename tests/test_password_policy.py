@@ -4,8 +4,9 @@ import re
 import pytest
 
 from eu.xfsc.bdd.cat.components.password_policy import (
-    DIGIT_CHARS, LOWER_CASE_CHARS, SPECIAL_CHARS, UPPER_CASE_CHARS,
-    PasswordPolicyRequirements, generate_password_for_policy)
+    DIGIT_CHARS, FALLBACK_MIN_LENGTH, LOWER_CASE_CHARS, SPECIAL_CHARS,
+    UPPER_CASE_CHARS, PasswordPolicyRequirements,
+    generate_password_for_policy)
 
 DEV_REALM_POLICY = "length(8) and specialChars(1) and upperCase(1) and lowerCase(1) and digits(1)"
 STRICT_POLICY = "length(20) and specialChars(3) and upperCase(2) and lowerCase(2) and digits(2)"
@@ -13,6 +14,18 @@ STRICT_POLICY = "length(20) and specialChars(3) and upperCase(2) and lowerCase(2
 
 def _count(password: str, alphabet: str) -> int:
     return sum(1 for char in password if char in alphabet)
+
+
+def _char_class(char: str) -> str:
+    for name, alphabet in (
+        ("special", SPECIAL_CHARS),
+        ("upper", UPPER_CASE_CHARS),
+        ("lower", LOWER_CASE_CHARS),
+        ("digit", DIGIT_CHARS),
+    ):
+        if char in alphabet:
+            return name
+    raise AssertionError(f"character '{char}' is not in any known password alphabet")
 
 
 def _assert_satisfies(password: str, requirements: PasswordPolicyRequirements) -> None:
@@ -58,6 +71,24 @@ def test_successive_calls_produce_different_passwords():
     assert first != second
 
 
+def test_generated_password_shuffles_mandatory_and_filler_characters():
+    """
+    Given the shipped dev realm's passwordPolicy string (exactly one
+    mandatory character per class, so an unshuffled mandatory-then-filler
+    ordering would put a special char at position 0 on every call)
+    When generate_password_for_policy is called repeatedly
+    Then the character class at position 0 is not always the same -- pinning
+    secrets.SystemRandom().shuffle(password_chars), whose removal the
+    generator's own docstring calls out ("a character's position never
+    reveals which class filled it")
+    """
+    first_char_classes = {
+        _char_class(generate_password_for_policy(DEV_REALM_POLICY)[0])
+        for _ in range(30)
+    }
+    assert len(first_char_classes) > 1
+
+
 def test_unsupported_directive_raises_naming_it():
     """
     Given a policy string containing a directive this module does not support
@@ -76,7 +107,7 @@ def test_empty_policy_still_produces_a_strong_password():
     """
     password = generate_password_for_policy("")
     _assert_satisfies(password, PasswordPolicyRequirements(
-        min_length=12, min_special_chars=1, min_upper_case=1, min_lower_case=1, min_digits=1,
+        min_length=FALLBACK_MIN_LENGTH, min_special_chars=1, min_upper_case=1, min_lower_case=1, min_digits=1,
     ))
 
 
