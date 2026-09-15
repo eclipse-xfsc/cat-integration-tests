@@ -25,18 +25,16 @@ not the federated-catalogue realm/client used for everything else in this
 suite.
 """
 from typing import Any, Optional
+
 from urllib.parse import quote
 
 import requests
 
 from eu.xfsc.bdd.core.defaults import CONNECT_TIMEOUT_IN_SECONDS
 
-from ..env import (
-    KEYCLOAK_ADMIN_PASSWORD,
-    KEYCLOAK_ADMIN_USER,
-    KEYCLOAK_REALM,
-    KEYCLOAK_URL,
-)
+from ..env import (KEYCLOAK_ADMIN_PASSWORD, KEYCLOAK_ADMIN_USER,
+                   KEYCLOAK_REALM, KEYCLOAK_URL)
+from .password_policy import generate_password_for_policy
 
 MASTER_REALM = "master"
 ADMIN_CLI_CLIENT_ID = "admin-cli"
@@ -49,9 +47,12 @@ TARGET_CLIENT_ID = "federated-catalogue"
 
 PARTICIPANT_ID_ATTRIBUTE = "participantId"
 PASSWORD_CREDENTIAL_TYPE = "password"
+PASSWORD_POLICY_JSON_KEY = "passwordPolicy"
 UNAUTHORIZED_STATUS_CODE = 401
+OK_STATUS_CODE = 200
 
 ADMIN_TOKEN_URL = f"{KEYCLOAK_URL}/realms/{MASTER_REALM}/protocol/openid-connect/token"
+REALM_URL = f"{KEYCLOAK_URL}/admin/realms/{KEYCLOAK_REALM}"
 CLIENTS_URL = f"{KEYCLOAK_URL}/admin/realms/{KEYCLOAK_REALM}/clients"
 USERS_URL = f"{KEYCLOAK_URL}/admin/realms/{KEYCLOAK_REALM}/users"
 
@@ -77,6 +78,7 @@ class KeycloakAdmin:
         self._session = requests.Session()
         self._client_uuid: Optional[str] = None
         self._admin_token: Optional[str] = None
+        self._password_policy: Optional[str] = None
 
     def _fetch_admin_token(self) -> str:
         response = requests.post(
@@ -109,7 +111,8 @@ class KeycloakAdmin:
         for the caller to assert on, not retried indefinitely.
         """
         response = self._session.request(
-            method, url, headers=self._admin_headers(), timeout=CONNECT_TIMEOUT_IN_SECONDS, **kwargs,
+            method, url, headers=self._admin_headers(),
+            timeout=CONNECT_TIMEOUT_IN_SECONDS, **kwargs,
         )
         if response.status_code == UNAUTHORIZED_STATUS_CODE:
             response = self._session.request(
@@ -119,7 +122,9 @@ class KeycloakAdmin:
         return response
 
     def _resolve_client_uuid(self) -> str:
-        """GET /admin/realms/{realm}/clients?clientId=federated-catalogue — cached per instance."""
+        """GET /admin/realms/{realm}/clients?clientId=federated-catalogue
+
+        Cached per instance."""
         if self._client_uuid is not None:
             return self._client_uuid
         response = self._request("GET", CLIENTS_URL, params={"clientId": TARGET_CLIENT_ID})
@@ -130,6 +135,31 @@ class KeycloakAdmin:
         )
         self._client_uuid = clients[0]["id"]
         return self._client_uuid
+
+    def resolve_password_policy(self) -> str:
+        """GET /admin/realms/{realm} - the realm's raw passwordPolicy string,
+        cached per instance like _resolve_client_uuid. Fetched from the LIVE
+        realm rather than the repository's realm-export file, so this project
+        never depends on a path inside the sibling federated-catalogue repo.
+        Empty string (not None) when the realm defines no password policy."""
+        if self._password_policy is not None:
+            return self._password_policy
+        response = self._request("GET", REALM_URL)
+        body = response.json() if response.content else {}
+        assert response.status_code == OK_STATUS_CODE and isinstance(body, dict), (
+            f"Could not resolve password policy for realm '{KEYCLOAK_REALM}': "
+            f"{response.status_code} {response.text}"
+        )
+        self._password_policy = str(body.get(PASSWORD_POLICY_JSON_KEY) or "")
+        return self._password_policy
+
+    def generate_test_user_password(self) -> str:
+        """Generate a fresh password that satisfies the realm's live password
+        policy (resolve_password_policy / components/password_policy.py).
+        Never a shared or predictable password: after_scenario's cleanup
+        swallows delete failures, so a failed teardown against a shared realm
+        must not leave a live account with a known, reusable credential."""
+        return generate_password_for_policy(self.resolve_password_policy())
 
     def create_user(self, username: str, password: str, participant_id: str) -> requests.Response:
         """POST /admin/realms/{realm}/users
@@ -158,15 +188,15 @@ class KeycloakAdmin:
         client_uuid = self._resolve_client_uuid()
         role_representations = []
         for role_name in role_names:
-            response = self._request("GET", f"{CLIENTS_URL}/{client_uuid}/roles/{quote(role_name, safe='')}")
+            role_url = f"{CLIENTS_URL}/{client_uuid}/roles/{quote(role_name, safe='')}"
+            response = self._request("GET", role_url)
             assert response.status_code == 200, (
                 f"Could not resolve federated-catalogue client role '{role_name}': "
                 f"{response.status_code} {response.text}"
             )
             role_representations.append(response.json())
-        return self._request(
-            "POST", f"{USERS_URL}/{user_id}/role-mappings/clients/{client_uuid}", json=role_representations,
-        )
+        role_mappings_url = f"{USERS_URL}/{user_id}/role-mappings/clients/{client_uuid}"
+        return self._request("POST", role_mappings_url, json=role_representations)
 
     def delete_user(self, user_id: str) -> requests.Response:
         """DELETE /admin/realms/{realm}/users/{id}"""
